@@ -1,0 +1,256 @@
+---
+# yamllint disable rule:line-length
+###############################################################################
+# Postgres Database Configuration
+###############################################################################
+
+# Databases to manage.
+#
+# Databases are managed using connection options from postgres_user_connection;
+# unless explicitly overridden.
+#
+# postgres_databases:
+#     list of dict - Database definitions from community.postgres.postgres_db.
+#   - ca_cert: str - Path to Certificate Authority (CA) certificate.
+#         Default: postgres_user_connection.ca_cert or omit.
+#     comment: str - user comment (equivalent to COMMENT ON ROLE statement).
+#         Special Case:
+#           '': Reset comment.
+#         Default: omit.
+#     conn_limit: int - User (role) connection limit.
+#         Default: omit.
+#     connect_params: dict - Additional parameters to be passed to libpg.
+#           There parameters take precedence.
+#       {KEY}: {VALUE} - Configuration parameter.
+#           Default: postgres_user_connection.connect_params or {}.
+#     dump_extra_args: str - Provide additional arguments for mysqldump.
+#           Used when state=dump only, ignored otherwise.
+#         Default: omit.
+#     encoding: str - Encoding mode of database.
+#         Default: 'UTF-8'.
+#     force: bool - Force drop database if state=absent?
+#         Default: False.
+#     icu_locale: str - ICU locale (ICU_LOCALE) for the database default
+#           collation order and character classification, overriding the
+#           setting locale. Locale provider must be ICU. The default is the
+#           setting of locale if specified; otherwise the same setting as the
+#           template database.
+#         Default: omit.
+#     lc_collate: str - Collation order (LC_COLLATE) to use in the database
+#           must match collation order of template database unless template0 is
+#           used as template. Locales will automatically be generated and
+#           installed.
+#         Default: 'en_US.UTF-8'.
+#     lc_ctype: str - Character classification (LC_CTYPE) to use in the
+#           database (e.g. lower, upper, …). Must match LC_CTYPE of template
+#           database unless template0 is used as template. Locales will
+#           automatically be generated and installed.
+#         Default: 'en_US.UTF-8'.
+#     locale_provider: str - Provider to use for the default collation in this
+#           database (LOCALE_PROVIDER).
+#         Values:
+#            icu: Use ICU.
+#           libc: Use libc.
+#             '': Use template default (default).
+#         Default: omit (default).
+#     login_host: str - Host running the database.
+#         Special Case:
+#           *: local connection may require '127.0.0.1' instead of 'localhost'.
+#         Default: postgres_user_connection.login_host or 'localhost'.
+#     login_password: str - Password used to authenticate with.
+#         Default: postgres_user_connection.login_password or omit.
+#     login_unix_socket: str - Unix domain socket path for local connections.
+#         Default: postgres_user_connection.login_unix_socket or
+#                  postgres_config.unix_socket_directories[0].
+#     login_user: str - Username module uses to establish PostgreSQL session.
+#         Default: postgres_user_connection.login_user or 'postgres'.
+#     maintenance_db: str - Initial database (which is also called maintenance
+#           DB) that Ansible connects to.
+#         Default: 'postgres'.
+#     name: str - Name of the database to add or remove.
+#     owner: str - Name of the user (role) to set as owner of the database.
+#         Default: postgres_user.
+#     port: int - Database port to connect to.
+#         Default: postgres_user_connection.port or postgres_config.port.
+#     session_role: str - Switch to session role after connecting.
+#           The specified session role must be a role that the current
+#           login_user is a member of. Permissions checking for SQL commands is
+#           carried out as though the session role were the one that had logged
+#           in originally.
+#         Default: omit.
+#     ssl_cert: str - Location of the client SSL certificate.
+#         Default: postgres_user_connection.ssl_cert or omit.
+#     ssl_key: str - Location of secret key used for the client certificate.
+#         Default: postgres_user_connection.ssl_key or omit.
+#     ssl_mode: str- SSL service negotiation mode.
+#         Values:
+#                 allow: Allow SSL if provided.
+#               disable: Disable SSL.
+#                prefer: Prefer SSL if available (default).
+#               require: Require SSL (no CA verification).
+#             verify-ca: Require SSL with CA verification. libpq will verify
+#                        that the server is trustworthy by checking the
+#                        certificate chain up to the root certificate stored on
+#                        the client.
+#           verify-full: Require SSL with Full chain VA verification. libpq
+#                        will also verify that the server host name matches the
+#                        name stored in the server certificate.
+#         Default: postgres_user_connection.ssl_mode or 'prefer' (default).
+#
+#         Reference:
+#         * https://www.postgresql.org/docs/current/static/libpq-ssl.html
+#     state: str - Database state.
+#         Values:
+#            absent: Remove database if necessary.
+#              dump: Requires target definition where database backed up.
+#           present: Create database if necessary (default).
+#            rename: Rename database name to target (if name does not exist the
+#                    module will report that nothing has changed).
+#           restore: Requires target definition where database is restored.
+#                    Role will automatically import database if created, see
+#                    extensions.db_import.
+#         Default: 'present'.
+#     tablespace: str - Tablespace to set for the database
+#         Special Case:
+#           pg_default: Explicitly set to move the database back to default
+#                       tablespace.
+#         Default: omit.
+#
+#         Reference:
+#         * https://www.postgresql.org/docs/current/sql-alterdatabase.html.
+#     target: str - File to back up or restore from
+#         Requires state=dump|restore.
+#         Default: omit.
+#     target_opts: str - Additional arguments for pg_dump or restore program
+#           (pg_restore or psql, depending on target’s format).
+#         Requires state=dump|restore.
+#         Default: omit.
+#     template: str - Template used to create the database.
+#         Default: 'template0'.
+#     trust_input: bool - Trust end user input?
+#         Values:
+#            True: Disable checks (default).
+#           False: Enable checks for values of options name, password, privs,
+#                  expires, role_attr_flags, comment, session_role are
+#                  potentially dangerous.
+#         Default: True.
+#     extensions: dict - Database role extensions.
+#       db_import: dict - Database import options.
+#         enable: bool - Enable imports?
+#               Import occurs only when database is created and this option is
+#               enabled.
+#             Default: False.
+#         source: str - database to import.
+#               Source file is copied, imported, then removed.
+#             Values:
+#               {PATH}: Sourced from ansible controller; must NOT be compressed
+#                       archive.
+#
+#                       source: 'host_vars/db.example.com/data/skeleton.sql'
+#                   '': Use 'latest' individual DB backup from
+#                       postgres_databases_backup_dir (default).
+#             Default: '' (use latest backup).
+#
+# postgres_databases:
+#   - name: 'example_import_from_controller'
+#     collation: 'utf8_unicode_520_ci'
+#     encoding: 'utf8'
+#     state: 'present'
+#     extensions:
+#       db_import:
+#         enable: true
+#         source: 'host_vars/db.example.com/data/skeleton_db.sql'
+#   - name: 'example_import_from_latest_backup'
+#     collation: 'utf8_unicode_520_ci'
+#     encoding: 'utf8'
+#     state: 'present'
+#     extensions:
+#       db_import:
+#         enable: true
+#
+# Default: [].
+#
+# Reference:
+# * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_db_module.html
+postgres_databases: []
+
+###############################################################################
+# Postgres Database Backups
+###############################################################################
+# Backups are done through psql and executed as postgres with local unix
+# socket credentials from postgres_user_connection on a schedule. Databases are
+# date stamped, linked to 'latest', removing 'other' permissions.
+#
+# All backups except 'latest' are compressed with tar.xz.
+#
+# Disable if custom or complex backups are needed.
+
+# Enable database backup service? Default: True.
+postgres_databases_backup_enable: true
+
+# Enable all database backups?
+#
+# May be used with postgres_databases_backup_individual_enable.
+#
+# All databases will be backed up to:
+# * postgres_databases_backup_dir/all-databases-{DATE}.sql
+# * postgres_databases_backup_dir/all-databases-latest.sql ->
+#   postgres_databases_backup_dir/all-databases-{DATE}.sql
+#
+# Default: True.
+postgres_databases_backup_all_enable: true
+
+# Enable individual database backups?
+#
+# May be used with postgres_databases_backup_all_enable.
+#
+# All databases will be backed up individually to:
+# * postgres_databases_backup_dir/{DB}-{DATE}.sql
+# * postgres_databases_backup_dir/{DB}-latest.sql ->
+#   postgres_databases_backup_dir/{DB}-{DATE}.sql
+#
+# Default: True.
+postgres_databases_backup_individual_enable: true
+
+# Backup location.
+#
+# Directory will be created with root permissions.
+#
+# Default: '/var/lib/postgres_backup'.
+postgres_databases_backup_dir: '/var/lib/postgres_backup'
+
+# Backup file owner. Default: 'root'.
+postgres_databases_backup_owner: 'root'
+
+# Backup file group. Default: 'root'.
+postgres_databases_backup_group: 'root'
+
+# Set backup schedule.
+#
+# Uses systemd TIME specification.
+#
+# Default: 'weekly'
+#
+# Reference:
+# * https://www.freedesktop.org/software/systemd/man/latest/systemd.time.html
+postgres_databases_backup_schedule: 'weekly'
+
+# List of pg_dumpall pg_dump options for backing up databases.
+#
+# Default:
+#   - '--no-owner'
+#   - '--no-privileges'
+#   - '--username=postgres'
+#   - '--no-password'
+#   - '--host=localhost'
+#   - '--port=5432'
+#
+# Reference:
+# * https://www.postgresql.org/docs/current/app-pgdump.html
+postgres_databases_backup_options:
+  - '--no-owner'
+  - '--no-privileges'
+  - '--username={{ postgres_user | default("postgres") }}'
+  - '--no-password'
+  - '--host={{ postgres_user_connection.login_unix_socket | default("localhost") }}'
+  - '--port={{ postgres_user_connection.port | default(5432) }}'

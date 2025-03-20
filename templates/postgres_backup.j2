@@ -1,0 +1,50 @@
+#!/bin/bash
+#
+# Backup & compression of Postgres DBs
+#
+set -e
+DATE_STAMP=`date +%Y-%m-%d`
+OWNER='{{ postgres_user | default("postgres") }}'
+GROUP='{{ postgres_group | default("postgres") }}'
+TARGET='{{ postgres_databases_backup_dir | default("/var/lib/postgres_backup") }}'
+OPTIONS='{{ postgres_databases_backup_options | join(" ") }}'
+
+function dump_all () {
+  DUMP="${TARGET}/all-databases-${DATE_STAMP}.sql"
+  /usr/bin/pg_dumpall ${OPTIONS} > "${DUMP}"
+  chown ${OWNER}:${GROUP} "${DUMP}"
+  chmod o-rwx "${DUMP}"
+  ln -sf "${DUMP}" "${TARGET}/all-databases-latest.sql"
+
+  compress_db all-databases
+}
+
+function dump_dbs () {
+  /usr/bin/psql -t -d postgres -c 'select datname from pg_database where datistemplate = false;' | awk 'NF' | while read db; do
+    DUMP="${TARGET}/${db}-${DATE_STAMP}.sql"
+    /usr/bin/pg_dump ${OPTIONS} "${db}" > "${DUMP}"
+    chown ${OWNER}:${GROUP} "${DUMP}"
+    chmod o-rwx "${DUMP}"
+    ln -sf "${DUMP}" "${TARGET}/${db}-latest.sql"
+    compress_db "${db}"
+  done
+}
+
+function compress_db () {
+  # Args
+  #   1: database name.
+  #
+  # Sort files by most recent time
+  # Ignore first two (latest symlink, current backup)
+  # Compress with maximum xz compression & remove original sql file
+  #
+  # Assumes latest symlink always exists.
+  ls -t "${TARGET}/${1}"-*.sql | awk 'NR>2' | xargs -i tar -I "xz -9" -cf {}.tar.xz {} --remove-files 2>/dev/null
+}
+
+{% if postgres_databases_backup_all_enable | default(true) %}
+dump_all
+{% endif %}
+{% if postgres_databases_backup_individual_enable | default(true) %}
+dump_dbs
+{% endif %}

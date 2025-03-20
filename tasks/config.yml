@@ -1,0 +1,232 @@
+---
+# yamllint disable rule:line-length
+###############################################################################
+# Postgres Config
+###############################################################################
+# Create user specified locations and initialize data (DB) location if it is
+# not already done. Set global shell environment profile and write
+# configuration to specified locations.
+#
+# Args:
+#   _postgres_etc_dir: str - path to versioned postgres install.
+#   _postgres_scripts: str - path to versioned custom scripts.
+#   _postgres_bin: str - path to postgres versioned binary utilities.
+#   _postgres_start_config: dict - sanitized start configuration.
+#   _postgres_hba: list of dict - sanitized HBA configuration.
+#
+# Reference:
+# * https://www.postgresql.org/docs/current/config-setting.html
+
+- name: 'Config | check data directory initialization'
+  ansible.builtin.stat:
+    path: '{{ postgres_config.data_directory }}/PG_VERSION'
+  register: _postgres_init
+
+- name: 'Config | initialize data directory'
+  when: not _postgres_init.stat.exists
+  ansible.builtin.command: '{{ _postgres_bin }}/initdb -D {{ postgres_config.data_directory }}'
+  become: true
+  become_user: '{{ postgres_user }}'
+  changed_when: true
+
+- name: 'Config | enable backups'
+  when: postgres_databases_backup_enable
+  block:
+    - name: 'Config | enable backups | set backup directory'
+      ansible.builtin.file:
+        dest: '{{ postgres_databases_backup_dir }}'
+        owner: '{{ postgres_user }}'
+        group: '{{ postgres_group }}'
+        mode: '0755'
+        state: 'directory'
+
+    - name: 'Config | enable backups | set scripts directory'
+      ansible.builtin.file:
+        dest: '{{ _postgres_scripts }}'
+        owner: '{{ postgres_user }}'
+        group: '{{ postgres_group }}'
+        mode: '0755'
+        state: 'directory'
+
+    - name: 'Config | enable backups | set backup script'
+      ansible.builtin.template:
+        src: 'postgres_backup.j2'
+        dest: '{{ _postgres_scripts }}/postgres_backup'
+        owner: '{{ postgres_user }}'
+        group: '{{ postgres_group }}'
+        mode: '0700'
+
+    - name: 'Config | enable backups | create backup service'
+      ansible.builtin.include_role:
+        name: 'r_pufky.srv.systemd'
+      vars:
+        systemd_services:
+          - name: 'postgres_backup'
+            state: 'present'
+            drop_in: false
+            unit:
+              description: 'Postgres backup service.'
+              requires: ['postgres_backup.timer']
+            service:
+              type: 'simple'
+              exec_start: ['{{ _postgres_scripts }}/postgres_backup']
+            exec:
+              user: 'root'
+              group: 'root'
+        systemd_timers:
+          - name: 'postgres_backup'
+            state: 'present'
+            drop_in: false
+            unit:
+              description: 'MariaDB backup service timer.'
+            timer:
+              unit: 'postgres_backup.service'
+              on_calendar: ['{{ postgres_databases_backup_schedule }}']
+            install:
+              wanted_by: ['timers.target']
+
+- name: 'Config | disable backups'
+  when: not postgres_databases_backup_enable
+  block:
+    - name: 'Config | disable backups | set backup script'
+      ansible.builtin.file:
+        dest: '{{ _postgres_scripts }}/postgres_backup'
+        state: 'absent'
+
+    - name: 'Config | disable backups | remove backup service'
+      ansible.builtin.include_role:
+        name: 'r_pufky.srv.systemd'
+      vars:
+        systemd_services:
+          - name: 'postgres_backup'
+            state: 'absent'
+            drop_in: false
+        systemd_timers:
+          - name: 'postgres_backup'
+            state: 'absent'
+            drop_in: false
+
+- name: 'Config | create data directory'
+  ansible.builtin.file:
+    path: '{{ postgres_config.data_directory }}'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0700'
+    state: 'directory'
+
+- name: 'Config | create HBA directory'
+  ansible.builtin.file:
+    path: '{{ postgres_config.hba_file | dirname }}'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0755'
+    state: 'directory'
+
+- name: 'Config | create ident directory'
+  ansible.builtin.file:
+    path: '{{ postgres_config.ident_file | dirname }}'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0755'
+    state: 'directory'
+
+- name: 'Config | create PID directory'
+  ansible.builtin.file:
+    path: '{{ postgres_config.external_pid_file | dirname }}'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '2775'
+    state: 'directory'
+
+# Custom data directories require setting shell environments correctly so they
+# can be used (e.g. further in the role to manage postgres database).
+- name: 'Config | set postgres global environment profile'
+  when: postgres_service_profile_path | length == 0
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.template:
+    src: 'postgres.j2'
+    dest: '/etc/profile.d/postgres'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+
+- name: 'Config | set custom postgres global environment profile'
+  when: postgres_service_profile_path | length > 0
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.copy:
+    src: '{{ postgres_service_profile_path }}'
+    dest: '/etc/profile.d/postgres'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+    force: true
+
+- name: 'Config | set conf.d'
+  when: postgres_service_confd_path | length > 0
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.copy:
+    src: '{{ postgres_service_confd_path }}'
+    dest: '{{ _postgres_etc_dir }}/main/conf.d'
+    owner: 'root'
+    group: 'root'
+    mode: '0640'
+    force: true
+
+- name: 'Config | set environment'
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.template:
+    src: 'environment.j2'
+    dest: '{{ _postgres_etc_dir }}/main/environment'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0644'
+
+- name: 'Config | set postgresql.conf'
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.template:
+    src: 'postgresql.conf.j2'
+    dest: '{{ _postgres_etc_dir }}/main/postgresql.conf'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0644'
+
+- name: 'Config | set pg_ctl.conf'
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.template:
+    src: 'pg_ctl.conf.j2'
+    dest: '{{ _postgres_etc_dir }}/main/pg_ctl.conf'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0644'
+
+- name: 'Config | set pg_hba.conf'
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.template:
+    src: 'pg_hba.conf.j2'
+    dest: '{{ postgres_config.hba_file }}'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0640'
+
+- name: 'Config | set pg_ident.conf'
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.template:
+    src: 'pg_ident.conf.j2'
+    dest: '{{ postgres_config.ident_file }}'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0640'
+
+# daemon-reload required if changing start.conf.
+- name: 'Config | set start.conf'
+  notify: 'Handlers | restart postgres'
+  ansible.builtin.template:
+    src: 'start.conf.j2'
+    dest: '{{ _postgres_etc_dir }}/main/start.conf'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0644'
+
+# Force restart to apply new options/locales before DB modifications.
+- name: 'Config | start service'
+  ansible.builtin.meta: 'flush_handlers'

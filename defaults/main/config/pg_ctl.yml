@@ -1,0 +1,14 @@
+---
+###############################################################################
+# Postgres (pg_ctl.conf) Control Options
+###############################################################################
+
+# List of postgres cluster specific options.
+#
+# Options to pass to pg_ctl via pg_ctl.conf. Options are automatically qouted.
+#
+# Default: [].
+#
+# Reference:
+# * https://www.postgresql.org/docs/17/app-pg-ctl.html
+postgres_ctl_config: []

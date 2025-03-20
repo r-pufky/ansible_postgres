@@ -1,0 +1,48 @@
+---
+# yamllint disable rule:line-length
+- name: 'Postgresql includes | verify database'
+  hosts: 'postgres-debian-12-postgres_includes'
+  gather_facts: false
+  tasks:
+    - name: 'Postgresql includes | verify database | gather service status'
+      ansible.builtin.service_facts:
+
+    - name: 'Postgresql includes | verify database | gather service processes'
+      ansible.builtin.shell: 'set -o pipefail && ps aux | grep "postgres"'
+      args:
+        executable: '/bin/bash'
+      changed_when: false
+      register: _test_postgres_processes
+
+    # Will be enabled but not running, forked from @ service for version.
+    - name: 'Postgresql includes | verify database | assert postgresql@.service enabled'
+      ansible.builtin.assert:
+        that:
+          - '"postgresql.service" in ansible_facts.services'
+          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'
+        fail_msg: 'postgresql.service should be active.'
+
+    - name: 'Postgresql includes | verify database | assert postgresql@.service running'
+      ansible.builtin.assert:
+        that:
+          - _test_postgres_processes.stdout_lines | length > 2
+        fail_msg: 'Postgres has not successfully started.'
+
+    - name: 'Postgresql includes | verify config | query postgresql.conf'
+      ansible.builtin.copy:
+        src: 'files/postgresql.conf'
+        dest: '/etc/postgresql/17/main/postgresql.conf'
+        owner: 'postgres'
+        group: 'postgres'
+        mode: '0644'
+      check_mode: true
+      diff: true
+      register: _test_postgres_postgresql
+
+    - name: 'Postgresql includes | verify config | assert postgresql.conf'
+      ansible.builtin.assert:
+        that:
+          - not _test_postgres_postgresql.changed
+        fail_msg: >
+          /etc/postgresql/17/main/postgresql.conf is not in expected format:
+          {{ _test_postgres_postgresql.diff }}.

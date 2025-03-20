@@ -1,0 +1,98 @@
+---
+###############################################################################
+# Postgres (pg_ident.conf) User Identity Mapping
+###############################################################################
+# Maps external user names to their corresponding PostgreSQL user names. If all
+# system user names and PostgreSQL user names are the same, you don't need
+# anything in this file.
+
+# User Identity Mapping.
+#
+# Special Case:
+#   *: Database and user names containing spaces, commas, quotes and other
+#      special characters must be quoted.
+#   *: Quoting one of the keywords: all, sameuser, samerole, replication makes
+#      the name lose its special character, and just match a database or
+#      username with that name.
+#
+# postgres_ident_config:
+#     dict - User identity mapping configuration.
+#   comment: str - Configuration comment.
+#   map_name: str - 'map={NAME}' used in pg_hba.conf OPTIONS.
+#   system_username: str - Client username.
+#       Special Case:
+#         /{REGEX}: Regular expression name match (starts with /). This can
+#                   contain a capture (a parenthesized subexpression).  The
+#                   substring matching the capture will be substituted for \1
+#                   (backslash-one) if present in PG-USERNAME.
+#   pg_username: str - Postgres username.
+#       Values:
+#              all: Match all Users/Groups.
+#           {USER}: Username to match.
+#         +{GROUP}: Group to match (starts with +).
+#         /{REGEX}: Regular expression name match (starts with /).
+#
+# Default: [].
+#
+# Reference:
+# * https://www.postgresql.org/docs/17/auth-username-maps.html
+postgres_ident_config: []
+
+###############################################################################
+# Ident File Includes
+###############################################################################
+# Included at end of pg_ident.conf in presented order.
+#
+# Since the pg_ident.conf records are examined sequentially for each connection
+# attempt, the order of the records is significant. Typically, earlier records
+# will have tight connection match parameters and weaker authentication
+# methods, while later records will have looser match parameters and stronger
+# authentication methods. For example, one might wish to use trust
+# authentication for local TCP/IP connections but require a password for remote
+# TCP/IP connections. In this case a record specifying trust authentication for
+# connections from 127.0.0.1 would appear before a record specifying password
+# authentication for a wider range of allowed client IP addresses.
+
+# List of configuration directories.
+#
+# Replaced by the contents of all the files found in the directory.
+#
+# Special Case:
+#    {FILE}: Must end in '.conf' and not be hidden dotfiles (.{FILE}).
+#         *: Processed in file name order (C locale rules) - numbers before
+#            letters, and uppercase before lowercase.
+#   {QUOTE}: Provide quoting if necessary.
+#
+# Default: [].
+postgres_ident_include_dir: []
+
+# List of files to include if they exist.
+#
+# Replaced by the content of the given file if the file exists. Otherwise, a
+# message is logged to indicate that the file has been skipped.
+#
+# Special Case:
+#         @: Files included by @ constructs are read as lists of names, which
+#            can be separated by either whitespace or commas and nested @
+#            constructs are allowed. Unless the file name following @ is an
+#            absolute path, it is taken to be relative to the directory
+#            containing the referencing file.
+#   {QUOTE}: Provide quoting if necessary.
+#
+# Default: [].
+postgres_ident_include_if_exists: []
+
+# List of files to include.
+#
+# Replaced by the contents of the given file. Fatal error if file is missing.
+#
+# Special Case:
+#         @: Files included by @ constructs are read as lists of names, which
+#            can be separated by either whitespace or commas and nested @
+#            constructs are allowed. Unless the file name following @ is an
+#            absolute path, it is taken to be relative to the directory
+#            containing the referencing file.
+#   {QUOTE}: Provide quoting if necessary.
+#
+# Default: [].
+postgres_ident_include: []

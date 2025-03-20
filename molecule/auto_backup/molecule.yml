@@ -1,0 +1,75 @@
+---
+# Confirm:
+# * Database creation and import from auto-backup works.
+# * Enabling, then disabling auto-backup removes expected files.
+dependency:
+  name: 'galaxy'
+driver:
+  name: 'podman'
+provisioner:
+  name: 'ansible'
+  config_options:
+    defaults:
+      interpreter_python: 'auto_silent'
+      callback_whitelist: 'profile_tasks, timer, yaml'
+    ssh_connection:
+      pipelining: false
+  inventory:
+    group_vars:
+      all:
+        postgres_users:
+          - name: 'example'
+            host: 'localhost'
+            password: 'example'
+            state: 'present'
+            append_privs: false
+            encrypted: true
+            extensions:
+              priv:
+                - database: 'postgres'
+                  privs: 'ALL'
+                  type: 'database'
+                - database: 'skeleton'
+                  privs: 'ALL'
+                  type: 'database'
+        postgres_databases:
+          - name: 'skeleton'
+            owner: 'example'
+            extensions:
+              db_import:
+                enable: true
+platforms:
+  - name: 'postgres-debian-12-auto_backup'
+    image: 'ghcr.io/hifis-net/debian-systemd:12'
+    systemd: 'always'
+    volumes:
+      - '/sys/fs/cgroup:/sys/fs/cgroup:ro'
+    command: '/lib/systemd/systemd'
+    pre_build_image: true
+  - name: 'postgres-debian-12-auto_backup-disable'
+    image: 'ghcr.io/hifis-net/debian-systemd:12'
+    systemd: 'always'
+    volumes:
+      - '/sys/fs/cgroup:/sys/fs/cgroup:ro'
+    command: '/lib/systemd/systemd'
+    pre_build_image: true
+verifier:
+  name: 'ansible'
+lint: |
+  set -e
+  yamllint .
+  ansible-lint .
+scenario:
+  test_sequence:
+    # - 'dependency'
+    # - 'cleanup'
+    - 'destroy'
+    - 'syntax'
+    - 'create'
+    - 'prepare'
+    - 'converge'
+    # - 'idempotence'  # systemd services.
+    # - 'side_effect'
+    - 'verify'
+    # - 'cleanup'
+    - 'destroy'

@@ -1,0 +1,30 @@
+---
+# yamllint disable rule:line-length
+- name: 'Auto backup | prepare'
+  hosts: 'all'
+  gather_facts: false
+  tasks:
+    - name: 'Auto backup | prepare | create backup directory'
+      ansible.builtin.file:
+        path: '/var/lib/postgres_backup'
+        owner: 300  # postgres user will be created with this ID.
+        group: 300  # postgres group will be created with this ID.
+        mode: '0755'
+        state: 'directory'
+
+    - name: 'Auto backup | prepare | set auto backup'
+      ansible.builtin.template:
+        src: '{{ lookup("env", "MOLECULE_PROJECT_DIRECTORY") }}/molecule/files/skeleton.sql'
+        dest: '/var/lib/postgres_backup/skeleton.sql'
+        owner: 300  # postgres user will be created with this ID.
+        group: 300  # postgres group will be created with this ID.
+        mode: '0640'
+
+    - name: 'Auto backup | prepare | link latest'
+      ansible.builtin.file:
+        src: '/var/lib/postgres_backup/skeleton.sql'
+        path: '/var/lib/postgres_backup/skeleton-latest.sql'
+        owner: 300  # postgres user will be created with this ID.
+        group: 300  # postgres group will be created with this ID.
+        mode: '0640'
+        state: 'link'

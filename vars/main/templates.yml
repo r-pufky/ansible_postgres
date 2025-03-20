@@ -1,0 +1,18 @@
+---
+###############################################################################
+# Postgres Role Templates
+###############################################################################
+# Default dictionary templates are used as a base dictionary with user settings
+# merged into them to provide a known good dictionary of settings with defaults
+# if user has not specified all values.
+#
+# These should only be changed if new values are added to the config.
+
+# Template HBA values.
+postgres_role_template_hba:
+  comment: ''
+  type: 'local'
+  database: 'all'
+  user: 'all'
+  method: 'trust'
+  options: {}

@@ -1,0 +1,20 @@
+---
+###############################################################################
+# Postgres (environment) Environment
+###############################################################################
+
+# Environment variables for postgres processes.
+#
+# postgres_environment_config:
+#     dict - Environment configuration.
+#   {KEY}: {VALUE} - Environment option.
+#
+# postgres_environment_config:
+#   VARIABLE: 'simple_value'
+#   VARIABLE: 'any value!'
+#
+# Default: {}
+#
+# Reference:
+# * https://www.postgresql.org/docs/17/libpq-envars.html
+postgres_environment_config: {}

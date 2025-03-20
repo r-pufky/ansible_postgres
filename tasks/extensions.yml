@@ -1,0 +1,62 @@
+---
+# yamllint disable rule:line-length
+###############################################################################
+# Manage User Extensions.
+###############################################################################
+# Imported DB's need to have permissions re-propagated. Originally this was
+# done through psql on the command line; is now supported through
+# postgresql_privs with database=postgres, privs=ALL, type=database.
+#
+# This allows for more granular controller of user permissions by the role
+# consumer.
+#
+# Original shell commands:
+#   for table in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" {{ user.db }}` ; do
+#     psql -c "alter table \"${table}\" owner to {{ user.name }}" {{ user.db }};
+#   done
+#   for table in `psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" {{ user.db }}` ; do
+#     psql -c "alter sequence \"${table}\" owner to {{ user.name }}" {{ user.db }};
+#   done
+#   for table in `psql -qAt -c "select table_name from information_schema.views where table_schema = 'public';" {{ user.db }}` ; do
+#     psql -c "alter view \"${table}\" owner to {{ user.name }}" {{ user.db }} ;
+#   done
+#
+# Args:
+#   user: postgres_users - user dictionary containing extensions.
+#
+# Reference:
+# * https://github.com/ansible/ansible/issues/29774
+# * https://semisignal.com/postgresql-database-import-with-ansible/
+# * https://stackoverflow.com/questions/1348126/modify-owner-on-all-tables-simultaneously-in-postgresql
+
+
+- name: 'Manage | users | extensions | privileges'
+  community.postgresql.postgresql_privs:
+    ca_cert: '{{ (user.ca_cert if user.ca_cert is defined else postgres_user_connection.ca_cert) | default(omit) }}'
+    connect_params: '{{ (user.connect_params if user.connect_params is defined else postgres_user_connection.connect_params) | default({}) }}'
+    database: '{{ (priv.database if priv.database is defined else user.db) | default(omit) }}'
+    fail_on_role: '{{ user.fail_on_user | default(true) }}'
+    grant_option: '{{ priv.grant_option | default(omit) }}'
+    login_host: '{{ (user.login_host if user.login_host is defined else postgres_user_connection.login_host) | default("localhost") }}'
+    login_password: '{{ (user.login_password if user.login_password is defined else postgres_user_connection.login_password) | default(omit) }}'
+    login_unix_socket: '{{ (user.login_unix_socket if user.login_unix_socket is defined else postgres_user_connection.login_unix_socket) | default(postgres_config.unix_socket_directories[0]) }}'
+    login_user: '{{ (user.login_user if user.login_user is defined else postgres_user_connection.login_user) | default("postgres") }}'
+    objs: '{{ priv.objs | default(omit) }}'
+    port: '{{ (user.port if user.port is defined else postgres_user_connection.port) | default(postgres_config.port) }}'
+    privs: '{{ priv.privs | default(omit) }}'
+    roles: '{{ priv.roles if priv.roles is defined else user.name | default(omit) }}'
+    schema: '{{ priv.schema | default(omit) }}'
+    session_role: '{{ (user.session_role if user.session_role is defined else postgres_user_connection.session_role) | default(omit) }}'
+    ssl_cert: '{{ (user.ssl_cert if user.ssl_cert is defined else postgres_user_connection.ssl_cert) | default(omit) }}'
+    ssl_key: '{{ (user.ssl_key if user.ssl_key is defined else postgres_user_connection.ssl_key) | default(omit) }}'
+    ssl_mode: '{{ (user.ssl_mode if user.ssl_mode is defined else postgres_user_connection.ssl_mode) | default("prefer") }}'
+    state: '{{ user.state | default("present") }}'
+    target_roles: '{{ priv.target_roles | default(omit) }}'
+    trust_input: '{{ user.trust_input | default(true) }}'
+    type: '{{ priv.type | default("table") }}'
+  become: true
+  become_user: '{{ postgres_user }}'
+  loop: '{{ user.extensions.priv }}'
+  loop_control:
+    loop_var: 'priv'
+    label: '{{ priv.database }} {{ priv.type }} {{ priv.privs }}'

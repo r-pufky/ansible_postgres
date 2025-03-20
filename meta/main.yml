@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: 'r_pufky'
+  description: 'Postgres Server'
+  company: 'N/A'
+  license: 'AGPL-3.0 License'
+  min_ansible_version: '2.18.0'
+
+  platforms:
+    - name: 'Debian'
+      versions:
+        - 'bookworm'
+
+  galaxy_tags:
+    - 'db'
+    - 'postgres'
+    - 'postgresql'
+
+dependencies: []

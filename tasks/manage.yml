@@ -1,0 +1,59 @@
+---
+# yamllint disable rule:line-length
+###############################################################################
+# Manage Postgres
+###############################################################################
+# Manage user accounts & initial databases.
+#
+# * Create users first so database definitions can correctly reference users.
+# * Create/import databases if they do not exist.
+# * Set user permissions on databases.
+
+- name: 'Manage | users'
+  community.postgresql.postgresql_user:
+    ca_cert: '{{ (user.ca_cert if user.ca_cert is defined else postgres_user_connection.ca_cert) | default(omit) }}'
+    comment: '{{ user.comment | default(omit) }}'
+    configuration: '{{ user.configuration | default({}) }}'
+    conn_limit: '{{ user.conn_limit | default(omit) }}'
+    connect_params: '{{ (user.connect_params if user.connect_params is defined else postgres_user_connection.connect_params) | default({}) }}'
+    db: '{{ user.db | default("") }}'
+    encrypted: '{{ user.encrypted | default(true) }}'
+    expires: '{{ user.expires | default(omit) }}'
+    fail_on_user: '{{ user.fail_on_user | default(true) }}'
+    login_host: '{{ (user.login_host if user.login_host is defined else postgres_user_connection.login_host) | default("localhost") }}'
+    login_password: '{{ (user.login_password if user.login_password is defined else postgres_user_connection.login_password) | default(omit) }}'
+    login_unix_socket: '{{ (user.login_unix_socket if user.login_unix_socket is defined else postgres_user_connection.login_unix_socket) | default(postgres_config.unix_socket_directories[0]) }}'
+    login_user: '{{ (user.login_user if user.login_user is defined else postgres_user_connection.login_user) | default("postgres") }}'
+    name: '{{ user.name }}'
+    no_password_changes: '{{ user.no_password_changes | default(false) }}'
+    password: '{{ user.password | default(omit) }}'
+    port: '{{ (user.port if user.port is defined else postgres_user_connection.port) | default(postgres_config.port) }}'
+    reset_unspecified_configuration: '{{ user.reset_unspecified_configuration | default(false) }}'
+    role_attr_flags: '{{ user.role_attr_flags | default("") }}'
+    session_role: '{{ (user.session_role if user.session_role is defined else postgres_user_connection.session_role) | default(omit) }}'
+    ssl_cert: '{{ (user.ssl_cert if user.ssl_cert is defined else postgres_user_connection.ssl_cert) | default(omit) }}'
+    ssl_key: '{{ (user.ssl_key if user.ssl_key is defined else postgres_user_connection.ssl_key) | default(omit) }}'
+    ssl_mode: '{{ (user.ssl_mode if user.ssl_mode is defined else postgres_user_connection.ssl_mode) | default("prefer") }}'
+    state: '{{ user.state | default("present") }}'
+    trust_input: '{{ user.trust_input | default(true) }}'
+  become: true
+  become_user: '{{ postgres_user }}'
+  loop: '{{ postgres_users }}'
+  loop_control:
+    loop_var: 'user'
+    label: '{{ user.name }}'
+
+- name: 'Manage | DB'
+  ansible.builtin.include_tasks: 'import_db.yml'
+  loop: '{{ postgres_databases }}'
+  loop_control:
+    loop_var: 'db'
+    label: '{{ db.name }}'
+
+- name: 'Manage | users | extensions'
+  when: user.extensions.priv | default([]) | length > 0
+  ansible.builtin.include_tasks: 'extensions.yml'
+  loop: '{{ postgres_users }}'
+  loop_control:
+    loop_var: 'user'
+    label: '{{ user.name }}'

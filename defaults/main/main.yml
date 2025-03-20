@@ -1,0 +1,174 @@
+---
+# yamllint disable rule:line-length
+###############################################################################
+# Postgres Role Configuration
+###############################################################################
+# psycopg2 is required on ansible controller.
+
+# Postgres version to install.
+#
+# All versions are supported by the postgres Debian repository but may not be
+# fully supported by the role.
+#
+# Values:
+#    17: Latest 17 stable release (default).
+#    16: 16.x release.
+#    15: 15.x release.
+#    14: 14.x release.
+#    13: 13.x release.
+#
+# Reference:
+# * https://www.postgresql.org/download/linux/debian/
+postgres_service_version: '17'
+
+# Path to Postgres conf.d.
+#
+# Optional user-defined conf.d files configuration. Sourced from ansible
+# controller; automatically placed in
+# /etc/postgresql/{{ postgres_service_version }}/main/conf.d/ with correct
+# permissions. Be sure to set appropriate paths for Postgres configuration
+# settings.
+#
+# postgres_service_confd_path: 'host_vars/db.example.com/data/conf.d'
+#
+# Default: '' (disabled).
+postgres_service_confd_path: ''
+
+# Custom postgres global environment profile.
+#
+# A default global bash environment profile is created setting PGDATA and
+# appending the versioned binary utility location to PATH. For systems with
+# multiple postgres versions running; a custom profile is likely needed.
+#
+# Sourced from ansible controller; automatically placed in
+# /etc/profile.d/postgres with correct permissions. Be sure to set appropriate
+# paths for Postgres configuration settings.
+#
+# postgres_service_profile_path: 'host_vars/db.example.com/data/profile.sh'
+#
+# Default: '' (auto generate profile).
+postgres_service_profile_path: ''
+
+# Postgres startup configuration.
+#
+# Controls startup via start.conf.
+#
+# Values:
+#       auto: Automatically start the cluster.
+#     manual: Manual startup with pg_ctlcluster/postgresql@.service only.
+#   disabled: Refuse to start cluster.
+#
+# Default: 'auto'.
+postgres_service_startup: 'auto'
+
+# Purge postgres data on package removal?
+#
+# DATA DESTRUCTIVE. Removes DB's, state, and config. Results in clean system
+# state on package removal via debconf postgresql-{VERSION}/postrm_purge_data.
+#
+# Default: True (Debian default).
+postgres_service_purge_enable: true
+
+# Enable auto upgrades via APT package updates?
+#
+# Applied via debconf postgresql/auto_upgrade.
+#
+# Default: False (Debian default).
+postgres_service_auto_upgrade_enable: false
+
+###############################################################################
+# Postgres User
+###############################################################################
+
+# User that Postgres will run under.
+#
+# Enable postgres_create_user if this account is not externally managed.
+#
+# Default: 'postgres'.
+postgres_user: 'postgres'
+
+# Group that Postgres will run under.
+#
+# Enable postgres_create_user if this group is not externally managed.
+#
+# Default: 'postgres'.
+postgres_group: 'postgres'
+
+# Create postgres_user, postgres_group if not detected?
+#
+# Applied via r_pufky.srv.users, see vars/main.yml for default user attributes.
+#
+# Default: True.
+postgres_create_user: true
+
+# Role connection options for postgres_user.
+#
+# Postgres is managed through the postgres_user using the specified options. By
+# default, postgres_user is configured to connect via unix socket connections.
+# These are also used for backups.
+#
+# postgres_user_connection:
+#     dict - DB user definitions from community.postgres.postgresql_user.
+#   ca_cert: str - Path to Certificate Authority (CA) certificate. This
+#           option must specify the same certificate as used by server.
+#         Default: omit.
+#   connect_params: dict - Additional parameters to be passed to libpg.
+#         There parameters take precedence.
+#     {KEY}: {VALUE} - Configuration parameter.
+#         Default: {}.
+#   login_host: str - Host running the database.
+#       Special Case:
+#         *: local connection may require '127.0.0.1' instead of 'localhost'.
+#       Default: 'localhost'.
+#   login_password: str - Password used to authenticate with.
+#       Default: omit.
+#   login_unix_socket: str - Unix domain socket path for local connections.
+#       Default: '{{ postgres_config.unix_socket_directories[0] }}'.
+#   login_user: str - Username module uses to establish PostgreSQL session.
+#       Default: 'postgres'.
+#   port: int - Database port to connect to.
+#       Default: '{{ postgres_config.port }}'.
+#   session_role: str - Switch to session role after connecting.
+#         The specified session role must be a role that the current
+#         login_user is a member of. Permissions checking for SQL commands is
+#         carried out as though the session role were the one that had logged
+#         in originally.
+#       Default: omit.
+#   ssl_cert: str - Location of the client SSL certificate.
+#       Default: omit.
+#   ssl_key: str - Location of secret key used for the client certificate.
+#       Default: omit.
+#   ssl_mode: str- SSL service negotiation mode.
+#       Values:
+#               allow: Allow SSL if provided.
+#             disable: Disable SSL.
+#              prefer: Prefer SSL if available (default).
+#             require: Require SSL (no CA verification).
+#           verify-ca: Require SSL with CA verification. libpq will verify
+#                      that the server is trustworthy by checking the
+#                      certificate chain up to the root certificate stored on
+#                      the client.
+#         verify-full: Require SSL with Full chain VA verification. libpq
+#                      will also verify that the server host name matches the
+#                      name stored in the server certificate.
+#       Default: 'prefer' (default).
+#
+#       Reference:
+#       * https://www.postgresql.org/docs/current/static/libpq-ssl.html
+#
+# postgres_user_connection:
+#   login_host: 'localhost'
+#   login_unix_socket: '{{ postgres_config.unix_socket_directories[0] }}'
+#   login_user: '{{ postgres_user }}'
+#   port: '{{ postgres_config.port }}'
+#
+# Default: [].
+#
+# Reference:
+# * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_user_module.html
+# * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_privs_module.html
+postgres_user_connection:
+  login_host: 'localhost'
+  login_unix_socket: '{{ postgres_config.unix_socket_directories[0] }}'
+  login_user: '{{ postgres_user }}'
+  port: '{{ postgres_config.port }}'

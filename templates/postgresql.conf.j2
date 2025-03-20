@@ -1,0 +1,47 @@
+{#
+# Postgres will refuse to start with any invalid configuration option, even for
+# options that are deprecated (using a new template for an older version) or
+# options that don't exist yet (using a current template for a new release).
+#
+# Process dictionary and cast variables, specifically handling formatting for
+# any know variables that are needed.
+#}
+{% for key, value in postgres_config.items() %}
+{% if value is boolean %}
+{{ key }}={{ value | lower }}
+{# Lists require custom processing. Default to comma separated. #}
+{% elif value is iterable and (value is not string and value is not mapping) %}
+{% if key == 'ssl_ciphers' or key == 'dynamic_library_path' %}
+{{ key }}='{{ value | join(":")}}'
+{% else %}
+{{ key }}='{{ value | join(",")}}'
+{% endif %}
+{% elif value is number %}
+{{ key }}={{ value }}
+{% else %}
+{{ key }}='{{ value }}'
+{% endif %}
+{% endfor %}
+
+{#
+postgresql.conf includes are processed differently from pg_*.conf; and require
+quoting. See #18856.
+
+Reference:
+* https://www.postgresql.org/message-id/18856-378db632176b54e5%40postgresql.org
+#}
+{% if postgres_config_include_dir | default(['conf.d']) | length > 0 %}
+{% for dir in postgres_config_include_dir %}
+include_dir '{{ dir }}'
+{% endfor %}
+{% endif %}
+{% if postgres_config_include_if_exists | default([]) | length > 0 %}
+{% for dir in postgres_config_include_if_exists %}
+include_if_exists '{{ dir }}'
+{% endfor %}
+{% endif %}
+{% if postgres_config_include | default([]) | length > 0 %}
+{% for dir in postgres_config_include %}
+include '{{ dir }}'
+{% endfor %}
+{% endif %}

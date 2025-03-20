@@ -1,0 +1,20 @@
+---
+###############################################################################
+# Postgres Install
+###############################################################################
+# Install required packages for utilities and Postgres. Restart service to
+# apply service changes (service must have new settings loaded to appl
+# security, user, and database changes).
+#
+# Reference:
+# * https://www.postgresql.org/download/linux/debian/
+# * https://computingforgeeks.com/install-postgresql-12-on-debian/
+
+- name: 'Install | packages'
+  ansible.builtin.include_role:
+    name: 'r_pufky.srv.apt'
+  vars:
+    apt_packages:
+      - '{{ postgres_role_packages }}'
+    apt_sources: '{{ postgres_role_apt_sources }}'
+    apt_package_update_cache: true

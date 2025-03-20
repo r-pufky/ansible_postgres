@@ -1,0 +1,72 @@
+---
+# yamllint disable rule:line-length
+# Confirm:
+# * pg_ident.conf - include_dir (all configs) sources directory correctly.
+# * pg_ident.conf - include_if_exists sources existing and non-existing file
+#   correctly.
+# * pg_ident.conf - include - sources existing file correctly.
+# * All options specified with multiple values are rendered multiple times.
+dependency:
+  name: 'galaxy'
+driver:
+  name: 'podman'
+provisioner:
+  name: 'ansible'
+  config_options:
+    defaults:
+      interpreter_python: 'auto_silent'
+      callback_whitelist: 'profile_tasks, timer, yaml'
+    ssh_connection:
+      pipelining: false
+  inventory:
+    group_vars:
+      all:
+        postgres_hba_config:
+          - comment: 'unauthenticated local login for testing'
+            type: 'local'
+            database: 'all'
+            user: 'all'
+            method: 'peer'
+            options:
+              map: 'local_all'
+        postgres_ident_config:
+          - comment: 'ident mapping'
+            map_name: 'local_all'
+            system_username: 'root'
+            pg_username: 'postgres'
+        postgres_service_confd_path: '{{ lookup("env", "MOLECULE_SCENARIO_DIRECTORY") }}/files/conf.d'
+        postgres_ident_include_dir:
+          - 'conf.d'
+        postgres_ident_include_if_exists:
+          - '/tmp/if_exists.conf'
+          - '/tmp/does_not_exist.conf'
+        postgres_ident_include:
+          - '/tmp/if_exists.conf'
+platforms:
+  - name: 'postgres-debian-12-ident_includes'
+    image: 'ghcr.io/hifis-net/debian-systemd:12'
+    systemd: 'always'
+    volumes:
+      - '/sys/fs/cgroup:/sys/fs/cgroup:ro'
+    command: '/lib/systemd/systemd'
+    pre_build_image: true
+verifier:
+  name: 'ansible'
+lint: |
+  set -e
+  yamllint .
+  ansible-lint .
+scenario:
+  test_sequence:
+    # - 'dependency'
+    # - 'cleanup'
+    - 'destroy'
+    - 'syntax'
+    - 'create'
+    # - 'prepare'
+    - 'converge'
+    # - 'idempotence'  # systemd services.
+    # - 'side_effect'
+    - 'verify'
+    # - 'cleanup'
+    - 'destroy'

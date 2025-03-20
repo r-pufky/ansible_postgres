@@ -1,0 +1,219 @@
+---
+# yamllint disable rule:line-length
+###############################################################################
+# Postgres User Configuration
+###############################################################################
+
+# Database users to manage.
+#
+# Users are managed using connection options from postgres_user_connection;
+# unless explicitly overridden.
+#
+# postgres_users:
+#     list of dict - DB user definitions from
+#                    community.postgres.postgresql_user.
+#   - ca_cert: str - Path to Certificate Authority (CA) certificate. This
+#           option must specify the same certificate as used by server.
+#         Default: postgres_user_connection.ca_cert or omit.
+#     comment: str - user comment (equivalent to COMMENT ON ROLE statement).
+#         Special Case:
+#           '': Reset comment.
+#         Default: omit.
+#     configuration: dict - Role-specific configuration parameters that would
+#           otherwise be set by ALTER ROLE user SET variable TO value;.
+#           Automatically quoted. Any parameter not listed is removed.
+#       {KEY}: {VALUE} - Configuration parameter.
+#           Special Case:
+#             *: reset_unspecified_configuration=true reset any parameter not
+#                listed instead of removing.
+#           Default: {}.
+#     conn_limit: int - User (role) connection limit.
+#         Default: omit.
+#     connect_params: dict - Additional parameters to be passed to libpg.
+#           There parameters take precedence.
+#       {KEY}: {VALUE} - Configuration parameter.
+#           Default: postgres_user_connection.connect_params or {}.
+#     db: str - Database to connect to and where user permissions are granted.
+#         Default: ''.
+#     encrypted: bool - Store password as hash in database?
+#         Default: true.
+#     expires: str - User password expiration date.
+#         Special Case:
+#             infinity: User password never expires.
+#           {SQL TIME}: Must be a valid SQL date and time type.
+#         Default: omit.
+#     fail_on_user: bool - Fail when user (role) cannot be removed?
+#         Default: true.
+#     login_host: str - Host running the database.
+#         Special Case:
+#           *: local connection may require '127.0.0.1' instead of 'localhost'.
+#         Default: postgres_user_connection.login_host or 'localhost'.
+#     login_password: str - Password used to authenticate with.
+#         Default: postgres_user_connection.login_password or omit.
+#     login_unix_socket: str - Unix domain socket path for local connections.
+#         Default: postgres_user_connection.login_unix_socket or
+#                  postgres_config.unix_socket_directories[0].
+#     login_user: str - Username module uses to establish PostgreSQL session.
+#         Default: postgres_user_connection.login_user or 'postgres'.
+#     name: str - Name of the user (role) to add or remove.
+#     no_password_changes: bool - Do NOT inspect database for password changes?
+#           If the user already exists, skips all password related checks.
+#           Useful when pg_authid is not accessible (such as in AWS RDS).
+#           Otherwise, makes password changes as necessary.
+#         Default: False.
+#     password: str - User password (hashed MD5 or unhashed).
+#             When passing an MD5-hashed password, you must generate it with
+#             the format 'str["md5"] + md5[ password + username ]', resulting
+#             in a total of 35 characters. An easy way to do this is echo
+#              "md5`echo -n 'secretpasswordJOE' | md5sum | awk '{print $1}'`".
+#           Special Case:
+#             *: encrypted=true password will automatically be hashed.
+#             {MD5}: MD5 hashed passwords are stored as-is.
+#         Default: omit.
+#     port: int - Database port to connect to.
+#         Default: postgres_user_connection.port or postgres_config.port.
+#     reset_unspecified_configuration: bool - Reset user default configuration
+#           parameters if not included in configuration?
+#         Default: False.
+#     role_attr_flags: str - PostgreSQL user attributes string.
+#         Special Case:
+#           *: Comma separated list of attributes. To create a simple role for
+#              using it like a group, use NOLOGIN flag. See the full list of
+#              supported flags in documentation for your PostgreSQL version.
+#         Default: "".
+#     session_role: str - Switch to session role after connecting.
+#           The specified session role must be a role that the current
+#           login_user is a member of. Permissions checking for SQL commands is
+#           carried out as though the session role were the one that had logged
+#           in originally.
+#         Default: postgres_user_connection.session_role or omit.
+#     ssl_cert: str - Location of the client SSL certificate.
+#         Default: postgres_user_connection.ssl_cert or omit.
+#     ssl_key: str - Location of secret key used for the client certificate.
+#         Default: postgres_user_connection.ssl_key or omit.
+#     ssl_mode: str- SSL service negotiation mode.
+#         Values:
+#                 allow: Allow SSL if provided.
+#               disable: Disable SSL.
+#                prefer: Prefer SSL if available (default).
+#               require: Require SSL (no CA verification).
+#             verify-ca: Require SSL with CA verification. libpq will verify
+#                        that the server is trustworthy by checking the
+#                        certificate chain up to the root certificate stored on
+#                        the client.
+#           verify-full: Require SSL with Full chain VA verification. libpq
+#                        will also verify that the server host name matches the
+#                        name stored in the server certificate.
+#         Default: postgres_user_connection.ssl_mode or 'prefer' (default).
+#
+#         Reference:
+#         * https://www.postgresql.org/docs/current/static/libpq-ssl.html
+#     state: str - User (role) state.
+#         Values:
+#            absent: Remove user.
+#           present: Create or update user.
+#     trust_input: bool - Trust end user input?
+#         Values:
+#            True: Disable checks (default).
+#           False: Enable checks for values of options name, password, privs,
+#                  expires, role_attr_flags, comment, session_role are
+#                  potentially dangerous.
+#         Default: True.
+#     extensions: dict - User (role) extensions.
+#       priv: list of dict - User privileges configuration from
+#               community.postgresql.postgresql_privs. Options from user
+#               definition are automatically included; applied in listed order.
+#         - database: str - Database to connect to.
+#                 Certain operations require specifying a different database
+#                 for assigning privileges.
+#               Default: user.db or omit.
+#           grant_option: bool - User (role) may grant/revoke specified
+#                 privileges/group memberships to others.
+#               Requires: state=present.
+#               Values:
+#                  True: Enable GRANT OPTION.
+#                    '': Make no changes.
+#                 False: Revoke GRANT OPTION.
+#               Default: omit.
+#           objs: str - Comma separated list of database objects to set
+#                 privileges on.
+#               Special Case:
+#                 ALL_IN_SCHEMA: If type=table,partition table,sequence,
+#                                function, procedure; the special value
+#                                ALL_IN_SCHEMA can be provided instead to
+#                                specify all database objects of type in the
+#                                schema specified via schema.
+#                      database: If type=database, this parameter can be
+#                                omitted, in which case privileges are set for
+#                                the database specified via database.
+#                      function: If type=function colons (:) in object names
+#                                will be replaced with commas (needed to
+#                                specify signatures).
+#               Default: omit.
+#           privs: str - Comma separated list of privileges to grant/revoke.
+#               Default: omit.
+#           roles: str - Comma separated list of role (user/group) names to set
+#                 permissions for. Roles PUBLIC, CURRENT_ROLE, CURRENT_USER,
+#                 SESSION_USER are implicitly defined in PostgreSQL.
+#               Default: user.name or omit.
+#           schema: str - Schema that contains database objects specified via
+#                 objs. May only be provided if type is table, sequence,
+#                 function, procedure, type, or default_privs. Defaults to
+#                 public in these cases.
+#
+#                 Pay attention, embedded types when type=type schema can be
+#                 pg_catalog or information_schema respectively.
+#               Values:
+#                        public: Use public schema (default).
+#                 not-specified: Do not use any schema.
+#               Default: omit.
+#           state: str - Privilege state.
+#               Values:
+#                  absent: Privileges are granted (default).
+#                 present: Revoke privileges.
+#               Default: True.
+#           target_roles: str - Existing role (user/group) names to set as the
+#                 default permissions for database objects subsequently created
+#                 by them.
+#               Requires: type=default_privs.
+#               Default: omit.
+#           type: str - Type of database object to set privileges on.
+#               Values:
+#                             database: database database object.
+#                        default_privs: default_privs database object.
+#                 foreign_data_wrapper: foreign_data_wrapper database object.
+#                       foreign_server: foreign_server database object.
+#                             function: function database object.
+#                                group: group database object.
+#                             language: language database object.
+#                                table: table database object (default).
+#                           tablespace: tablespace database object.
+#                               schema: schema database object.
+#                             sequence: sequence database object.
+#                                 type: type database object.
+#                            procedure: procedure database object.
+#                            parameter: parameter database object.
+#               Default: 'table'.
+#
+# postgres_users:
+#   - name: 'example'
+#     host: 'localhost'
+#     password: 'example'
+#     state: 'present'
+#     append_privs: false
+#     encrypted: true
+#     extensions:
+#       priv:
+#         - database: 'postgres'
+#           privs: 'ALL'
+#           type: 'database'
+#         - database: 'some_app'
+#           privs: 'ALL'
+#           type: 'database'
+#
+# Default: [].
+#
+# Reference:
+# * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_user_module.html
+# * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_privs_module.html
+postgres_users: []

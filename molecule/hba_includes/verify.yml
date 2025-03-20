@@ -1,0 +1,48 @@
+---
+# yamllint disable rule:line-length
+- name: 'HBA includes | verify database'
+  hosts: 'all'
+  gather_facts: false
+  tasks:
+    - name: 'HBA includes | verify database | gather service status'
+      ansible.builtin.service_facts:
+
+    - name: 'HBA includes | verify database | gather service processes'
+      ansible.builtin.shell: 'set -o pipefail && ps aux | grep "postgres"'
+      args:
+        executable: '/bin/bash'
+      changed_when: false
+      register: _test_postgres_processes
+
+    # Will be enabled but not running, forked from @ service for version.
+    - name: 'HBA includes | verify database | assert postgresql@.service enabled'
+      ansible.builtin.assert:
+        that:
+          - '"postgresql.service" in ansible_facts.services'
+          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'
+        fail_msg: 'postgresql.service should be active.'
+
+    - name: 'HBA includes | verify database | assert postgresql@.service running'
+      ansible.builtin.assert:
+        that:
+          - _test_postgres_processes.stdout_lines | length > 2
+        fail_msg: 'Postgres has not successfully started.'
+
+    - name: 'HBA includes | verify config | query pg_hba.conf'
+      ansible.builtin.copy:
+        src: 'files/pg_hba.conf'
+        dest: '/etc/postgresql/17/main/pg_hba.conf'
+        owner: 'postgres'
+        group: 'postgres'
+        mode: '0640'
+      check_mode: true
+      diff: true
+      register: _test_postgres_pg_hba
+
+    - name: 'HBA includes | verify config | assert pg_hba.conf'
+      ansible.builtin.assert:
+        that:
+          - not _test_postgres_pg_hba.changed
+        fail_msg: >
+          /etc/postgresql/17/main/pg_hba.conf is not in expected format:
+          {{ _test_postgres_pg_hba.diff }}.

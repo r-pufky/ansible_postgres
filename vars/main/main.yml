@@ -1,0 +1,63 @@
+---
+# yamllint disable rule:line-length
+###############################################################################
+# Postgres Role Options
+###############################################################################
+
+# Last time Postgres options were validated against a default configuration.
+postgres_role_validate_date: '2025-03-14'
+postgres_role_validate_release: 'bookworm'
+postgres_role_validate_version: '17'
+
+###############################################################################
+# APT Packages
+###############################################################################
+#
+# Reference:
+# * https://www.postgresql.org/download/linux/debian/
+
+postgres_role_prep_packages:
+  - 'ssl-cert'  # user requires ssl-cert group.
+  - 'locales'  # community.general.locale_gen.
+
+postgres_role_packages:
+  - 'postgresql-{{ postgres_service_version }}'
+  - 'libpq-dev'  # community.postgresql.
+  - 'python3-psycopg2'  # community.postgresql.
+  - 'xz-utils'  # tar.xz backups.
+
+postgres_role_apt_sources:
+  - name: 'postgres'
+    types:
+      - 'deb'
+    uris: 'https://apt.postgresql.org/pub/repos/apt'
+    suites:
+      - 'bookworm-pgdg'
+    components:
+      - 'main'
+    signed_by: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+
+###############################################################################
+# Default Postgres User/Group
+###############################################################################
+
+postgres_role_group:
+  name: 'postgres'
+  gid: 300
+
+postgres_role_user:
+  name: 'postgres'
+  group: 'postgres'
+  groups:
+    - 'ssl-cert'  # Debian package adds postgres to this group via ssl-cert.
+  append: true
+  uid: 300
+  shell: '/bin/bash'
+  home: '/var/lib/postgresql'
+  comment: 'PostgreSQL administrator,,,'
+  create_home: false
+  password: '!'
+  password_lock: true
+  update_password: 'always'
+  expires: -1
+  system: true
