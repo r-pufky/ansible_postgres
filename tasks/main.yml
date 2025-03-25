@@ -1,8 +1,16 @@
 ---
 - name: 'Prep'
   ansible.builtin.include_tasks: 'prep.yml'
+
 - name: 'Install'
-  ansible.builtin.include_tasks: 'install.yml'
+  ansible.builtin.include_role:
+    name: 'r_pufky.srv.apt'
+  vars:
+    apt_packages:
+      - '{{ postgres_role_packages }}'
+    apt_sources: '{{ postgres_role_apt_sources }}'
+    apt_package_update_cache: true
+
 - name: 'Config'
   ansible.builtin.include_tasks: 'config.yml'
 - name: 'Manage'

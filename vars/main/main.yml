@@ -12,7 +12,6 @@ postgres_role_validate_version: '17'
 ###############################################################################
 # APT Packages
 ###############################################################################
-#
 # Reference:
 # * https://www.postgresql.org/download/linux/debian/
 

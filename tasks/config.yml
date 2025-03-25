@@ -5,7 +5,9 @@
 ###############################################################################
 # Create user specified locations and initialize data (DB) location if it is
 # not already done. Set global shell environment profile and write
-# configuration to specified locations.
+# configuration to specified locations. Restart service to apply service
+# changes (service must have new settings loaded to apply security, user, and
+# database changes).
 #
 # Args:
 #   _postgres_etc_dir: str - path to versioned postgres install.

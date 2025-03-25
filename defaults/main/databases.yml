@@ -153,16 +153,12 @@
 #
 # postgres_databases:
 #   - name: 'example_import_from_controller'
-#     collation: 'utf8_unicode_520_ci'
-#     encoding: 'utf8'
 #     state: 'present'
 #     extensions:
 #       db_import:
 #         enable: true
 #         source: 'host_vars/db.example.com/data/skeleton_db.sql'
 #   - name: 'example_import_from_latest_backup'
-#     collation: 'utf8_unicode_520_ci'
-#     encoding: 'utf8'
 #     state: 'present'
 #     extensions:
 #       db_import:

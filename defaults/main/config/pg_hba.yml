@@ -118,7 +118,7 @@ postgres_hba_config:
     type: 'host'
     database: 'all'
     user: 'all'
-    address: '::1/32'
+    address: '::1/128'
     method: 'scram-sha-256'
   - comment: >
       Allow replication connections from localhost, by a user with the
