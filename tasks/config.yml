@@ -9,6 +9,10 @@
 # changes (service must have new settings loaded to apply security, user, and
 # database changes).
 #
+# Data locations may be mounted over network (with only postgres user and
+# everything else mapping to nobody/nogroup). Execute commands touching those
+# root mount points as postgres user to ensure they can be read or written.
+#
 # Args:
 #   _postgres_etc_dir: str - path to versioned postgres install.
 #   _postgres_scripts: str - path to versioned custom scripts.
@@ -22,13 +26,15 @@
 - name: 'Config | check data directory initialization'
   ansible.builtin.stat:
     path: '{{ postgres_config.data_directory }}/PG_VERSION'
+  become: true
+  become_user: '{{ postgres_user }}'  # Mount points may have user restrictions.
   register: _postgres_init
 
 - name: 'Config | initialize data directory'
   when: not _postgres_init.stat.exists
   ansible.builtin.command: '{{ _postgres_bin }}/initdb -D {{ postgres_config.data_directory }}'
   become: true
-  become_user: '{{ postgres_user }}'
+  become_user: '{{ postgres_user }}'  # Mount points may have user restrictions.
   changed_when: true
 
 - name: 'Config | enable backups'
@@ -115,6 +121,8 @@
     group: '{{ postgres_group }}'
     mode: '0700'
     state: 'directory'
+  become: true
+  become_user: '{{ postgres_user }}'  # Mount points may have user restrictions.
 
 - name: 'Config | create HBA directory'
   ansible.builtin.file:

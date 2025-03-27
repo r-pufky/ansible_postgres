@@ -84,6 +84,8 @@
         group: '{{ postgres_group }}'
         mode: '0600'
         force: true
+      become: true
+      become_user: '{{ postgres_user }}'  # Mount points may have user restrictions.
 
     - name: 'Manage | DB | import | {{ db.name }}'
       community.postgresql.postgresql_db:

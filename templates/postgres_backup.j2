@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Backup & compression of Postgres DBs
+# Backup & compression of Postgres DBs.
 #
 set -e
 DATE_STAMP=`date +%Y-%m-%d`
@@ -34,12 +34,15 @@ function compress_db () {
   # Args
   #   1: database name.
   #
-  # Sort files by most recent time
-  # Ignore first two (latest symlink, current backup)
-  # Compress with maximum xz compression & remove original sql file
+  # Sort files by most recent time.
+  # Ignore first two (latest symlink, current backup).
+  # Compress with maximum xz compression & remove original sql file.
+  # Only set tarball permissions if found.
   #
   # Assumes latest symlink always exists.
   ls -t "${TARGET}/${1}"-*.sql | awk 'NR>2' | xargs -i tar -I "xz -9" -cf {}.tar.xz {} --remove-files 2>/dev/null
+  chown ${OWNER}:${GROUP} "*.tar.xz" 2>/dev/null || true
+  chmod o-rwx "*.tar.xz" 2>/dev/null || true
 }
 
 {% if postgres_databases_backup_all_enable | default(true) %}

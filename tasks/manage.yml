@@ -44,7 +44,7 @@
     label: '{{ user.name }}'
 
 - name: 'Manage | DB'
-  ansible.builtin.include_tasks: 'import_db.yml'
+  ansible.builtin.include_tasks: 'manage_db.yml'
   loop: '{{ postgres_databases }}'
   loop_control:
     loop_var: 'db'
