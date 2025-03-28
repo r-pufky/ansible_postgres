@@ -43,7 +43,6 @@
   vars:
     apt_packages:
       - '{{ postgres_role_prep_packages }}'
-    apt_sources: '{{ postgres_role_apt_sources }}'
     apt_package_update_cache: true
 
 - name: 'Prep | manage users'
