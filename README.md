@@ -58,9 +58,10 @@ site.yml
      - 'r_pufky.srv.postgres'
 ```
 
-### Setup Postgres and import database on database creation.
+### Setup Postgres and import database with ownership on database creation.
 Import is idempotent -- database is only imported when the database is created.
-Re-import will require database deletion.
+Re-import will require database deletion. All user extensions are applied
+every role application.
 
 host_vars/db.example.com/vars/postgres.yml
 ``` yaml
@@ -73,13 +74,8 @@ postgres_users:
     append_privs: false
     encrypted: true
     extensions:
-      priv:
-        - database: 'postgres'
-          privs: 'ALL'
-          type: 'database'
-        - database: 'some_app'
-          privs: 'ALL'
-          type: 'database'
+      database_owner:
+        - 'some_app'
 postgres_databases:
   - name: 'some_app'
     owner: 'example'
@@ -98,7 +94,7 @@ site.yml
      - 'r_pufky.srv.postgres'
 ```
 
-### Deplying versions with different configuration settings.
+### Deploying versions with different configuration settings.
 Role will automatically parse `postgres_config` variables and render them
 correctly to `postgresql.conf`. See documentation. Just **remove** or **add**
 variables for the version of Postgres being installed.

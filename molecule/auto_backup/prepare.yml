@@ -13,7 +13,7 @@
         state: 'directory'
 
     - name: 'Auto backup | prepare | set auto backup'
-      ansible.builtin.template:
+      ansible.builtin.copy:
         src: '{{ lookup("env", "MOLECULE_PROJECT_DIRECTORY") }}/molecule/files/skeleton.sql'
         dest: '/var/lib/postgres_backup/skeleton.sql'
         owner: 300  # postgres user will be created with this ID.

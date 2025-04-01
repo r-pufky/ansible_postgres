@@ -43,13 +43,56 @@
       become_user: 'postgres'
       register: _test_query
 
-    - debug:
-        var: _test_query
     - name: 'Auto backup | verify database | assert DB skeleton created'
       ansible.builtin.assert:
         that:
           - _test_query.rowcount == 1
         fail_msg: 'skeleton.backup DB does not exist.'
+
+    - name: 'Auto backup | verify database | query DB skeleton table permissions'
+      community.postgresql.postgresql_query:
+        db: 'skeleton'
+        query: 'select tableowner from pg_catalog.pg_tables where tablename=%(table)s and tableowner=%(owner)s'
+        named_args:
+          table: 'backup'
+          owner: 'example'
+        login_host: 'localhost'
+        login_unix_socket: '/var/run/postgresql'
+        login_user: 'postgres'
+        port: '5432'
+      become: true
+      become_user: 'postgres'
+      register: _test_query
+
+    - name: 'Auto backup | verify database | assert DB skeleton table permissions'
+      ansible.builtin.assert:
+        that:
+          - _test_query.rowcount == 1
+        fail_msg: >
+          skeleton.backup should be owned by example role.
+          ({{ _test_query.query_result }}).
+
+    - name: 'Auto backup | verify database | query DB skeleton sequence permissions'
+      community.postgresql.postgresql_query:
+        db: 'skeleton'
+        query: 'select * from pg_catalog.pg_sequences where sequenceowner=%(owner)s'
+        named_args:
+          owner: 'example'
+        login_host: 'localhost'
+        login_unix_socket: '/var/run/postgresql'
+        login_user: 'postgres'
+        port: '5432'
+      become: true
+      become_user: 'postgres'
+      register: _test_query
+
+    - name: 'Auto backup | verify database | assert DB skeleton sequence permissions'
+      ansible.builtin.assert:
+        that:
+          - _test_query.rowcount == 1
+        fail_msg: >
+          pg_sequences should be owned by example role.
+          ({{ _test_query.query_result }}).
 
 - name: 'Auto backup | verify backup disabled'
   hosts: 'postgres-debian-12-auto_backup-disable'

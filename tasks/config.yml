@@ -171,6 +171,14 @@
     mode: '0644'
     force: true
 
+- name: 'Config | set database owner script'
+  ansible.builtin.template:
+    src: 'postgres_owner.j2'
+    dest: '{{ _postgres_scripts }}/postgres_owner'
+    owner: '{{ postgres_user }}'
+    group: '{{ postgres_group }}'
+    mode: '0700'
+
 - name: 'Config | set conf.d'
   when: postgres_service_confd_path | length > 0
   notify: 'Handlers | restart postgres'

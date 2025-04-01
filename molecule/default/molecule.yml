@@ -25,6 +25,13 @@ provisioner:
             append_privs: false
             encrypted: true
             extensions:
+              owner:
+                - db: 'test1'
+                  obj_type: 'table'
+                - db: 'test1'
+                  obj_type: 'sequence'
+                - db: 'test1'
+                  obj_type: 'view'
               priv:
                 - database: 'postgres'
                   privs: 'ALL'

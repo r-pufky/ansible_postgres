@@ -2,6 +2,7 @@
 # Confirm:
 # * Database creation and import from auto-backup works.
 # * Enabling, then disabling auto-backup removes expected files.
+# * Imported database has ownership permission set properly from shell script.
 dependency:
   name: 'galaxy'
 driver:
@@ -19,19 +20,15 @@ provisioner:
       all:
         postgres_users:
           - name: 'example'
+            db: 'postgres'
             host: 'localhost'
             password: 'example'
             state: 'present'
             append_privs: false
             encrypted: true
             extensions:
-              priv:
-                - database: 'postgres'
-                  privs: 'ALL'
-                  type: 'database'
-                - database: 'skeleton'
-                  privs: 'ALL'
-                  type: 'database'
+              database_owner:
+                - 'skeleton'
         postgres_databases:
           - name: 'skeleton'
             owner: 'example'

@@ -3,23 +3,12 @@
 ###############################################################################
 # Manage User Extensions.
 ###############################################################################
-# Imported DB's need to have permissions re-propagated. Originally this was
-# done through psql on the command line; is now supported through
-# postgresql_privs with database=postgres, privs=ALL, type=database.
+# Imported DB's need to have permissions re-propagated. Use psql command line
+# if user option is defined, otherwise depend on user configuring permissions
+# correctly via owner and priv extensions.
 #
 # This allows for more granular controller of user permissions by the role
 # consumer.
-#
-# Original shell commands:
-#   for table in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" {{ user.db }}` ; do
-#     psql -c "alter table \"${table}\" owner to {{ user.name }}" {{ user.db }};
-#   done
-#   for table in `psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" {{ user.db }}` ; do
-#     psql -c "alter sequence \"${table}\" owner to {{ user.name }}" {{ user.db }};
-#   done
-#   for table in `psql -qAt -c "select table_name from information_schema.views where table_schema = 'public';" {{ user.db }}` ; do
-#     psql -c "alter view \"${table}\" owner to {{ user.name }}" {{ user.db }} ;
-#   done
 #
 # Args:
 #   user: postgres_users - user dictionary containing extensions.
@@ -29,8 +18,46 @@
 # * https://semisignal.com/postgresql-database-import-with-ansible/
 # * https://stackoverflow.com/questions/1348126/modify-owner-on-all-tables-simultaneously-in-postgresql
 
+- name: 'Manage | users | extensions | database_owner'
+  when: user.extensions.database_owner is defined
+  ansible.builtin.command: '{{ _postgres_scripts }}/postgres_owner "{{ item }}" "{{ user.name }}"'
+  register: _postgres_owner_script
+  failed_when: _postgres_owner_script.rc != 0
+  changed_when: true
+  become: true
+  become_user: '{{ postgres_user }}'
+  loop: '{{ user.extensions.database_owner }}'
 
-- name: 'Manage | users | extensions | privileges'
+- name: 'Manage | users | extensions | owner'
+  when: user.extensions.owner is defined
+  community.postgresql.postgresql_owner:
+    ca_cert: '{{ (user.ca_cert if user.ca_cert is defined else postgres_user_connection.ca_cert) | default(omit) }}'
+    connect_params: '{{ (user.connect_params if user.connect_params is defined else postgres_user_connection.connect_params) | default({}) }}'
+    db: '{{ (owner.db if owner.db is defined else user.db) | default(omit) }}'
+    fail_on_role: '{{ owner.fail_on_role | default(omit) }}'
+    login_host: '{{ (user.login_host if user.login_host is defined else postgres_user_connection.login_host) | default("localhost") }}'
+    login_password: '{{ (user.login_password if user.login_password is defined else postgres_user_connection.login_password) | default(omit) }}'
+    login_unix_socket: '{{ (user.login_unix_socket if user.login_unix_socket is defined else postgres_user_connection.login_unix_socket) | default(postgres_config.unix_socket_directories[0]) }}'
+    login_user: '{{ (user.login_user if user.login_user is defined else postgres_user_connection.login_user) | default("postgres") }}'
+    new_owner: '{{ owner.new_owner if owner.new_owner is defined else user.name }}'
+    obj_name: '{{ owner.obj_name | default(omit) }}'
+    obj_type: '{{ owner.obj_type | default(omit) }}'
+    port: '{{ (user.port if user.port is defined else postgres_user_connection.port) | default(postgres_config.port) }}'
+    reassign_owned_by: '{{ owner.reassign_owned_by | default(omit) }}'
+    session_role: '{{ (user.session_role if user.session_role is defined else postgres_user_connection.session_role) | default(omit) }}'
+    ssl_cert: '{{ (user.ssl_cert if user.ssl_cert is defined else postgres_user_connection.ssl_cert) | default(omit) }}'
+    ssl_key: '{{ (user.ssl_key if user.ssl_key is defined else postgres_user_connection.ssl_key) | default(omit) }}'
+    ssl_mode: '{{ (user.ssl_mode if user.ssl_mode is defined else postgres_user_connection.ssl_mode) | default("prefer") }}'
+    trust_input: '{{ user.trust_input | default(true) }}'
+  become: true
+  become_user: '{{ postgres_user }}'
+  loop: '{{ user.extensions.owner }}'
+  loop_control:
+    loop_var: 'owner'
+    label: '{{ owner.db }} {{ owner.new_owner | default(user.name) }}: {{ owner.obj_name | default("") }} {{ owner.obj_type | default("") }} {{ owner.reassign_owned_by | default("") }}'
+
+- name: 'Manage | users | extensions | priv'
+  when: user.extensions.priv is defined
   community.postgresql.postgresql_privs:
     ca_cert: '{{ (user.ca_cert if user.ca_cert is defined else postgres_user_connection.ca_cert) | default(omit) }}'
     connect_params: '{{ (user.connect_params if user.connect_params is defined else postgres_user_connection.connect_params) | default({}) }}'
@@ -59,4 +86,4 @@
   loop: '{{ user.extensions.priv }}'
   loop_control:
     loop_var: 'priv'
-    label: '{{ priv.database }} {{ priv.type }} {{ priv.privs }}'
+    label: '{{ priv.database }} {{ priv.type | default("") }} {{ priv.privs }}'

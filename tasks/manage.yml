@@ -51,7 +51,6 @@
     label: '{{ db.name }}'
 
 - name: 'Manage | users | extensions'
-  when: user.extensions.priv | default([]) | length > 0
   ansible.builtin.include_tasks: 'extensions.yml'
   loop: '{{ postgres_users }}'
   loop_control:

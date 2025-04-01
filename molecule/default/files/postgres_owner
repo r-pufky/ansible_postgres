@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+# Change Database table ownership for specified database/role.
+#
+# community.postgresql solutions do not work for all cases and are overly
+# complicated. Just use a role name and database to set initial ownership.
+#
+# Reference:
+# * https://stackoverflow.com/questions/1348126/postgresql-modify-owner-on-all-tables-simultaneously-in-postgresql
+
+if [ $# -ne 2 ]; then
+  echo "Usage: ${0} {DATABASE} {ROLE}"
+  exit 1
+fi
+
+for table in $(psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" ${1}); do
+  psql -c "alter table \"${table}\" owner to ${2}" ${1};
+done
+for table in $(psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" ${1}); do
+  psql -c "alter sequence \"${table}\" owner to ${2}" ${1};
+done
+for table in $(psql -qAt -c "select table_name from information_schema.views where table_schema = 'public';" ${1}); do
+  psql -c "alter view \"${table}\" owner to ${2}" ${1};
+done
+
+exit 0

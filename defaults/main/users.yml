@@ -120,6 +120,71 @@
 #                  potentially dangerous.
 #         Default: True.
 #     extensions: dict - User (role) extensions.
+#       database_owner: list of str - Database names to change all ownership of
+#               objects to user.name. Uses shell script to set tables,
+#               sequences, and views without the need of owner/priv use.
+#           Default: [].
+#
+#           Reference:
+#           * https://stackoverflow.com/questions/1348126/postgresql-modify-owner-on-all-tables-simultaneously-in-postgresql
+#       owner: list of dict - Owner privileges user configuration from
+#               community.postgresql.postgresql_owner. Options from user
+#               definition are automatically included; applied in listed order.
+#         - db: str - Database to connect to.
+#                 Certain operations require specifying a different database
+#                 for assigning privileges.
+#               Default: user.db or omit.
+#           fail_on_role: bool - Fail when reassign_owned_by role does not
+#                 exist? Otherwise warn and continue. Mutually exclusive with
+#                 obj_name and obj_type.
+#               Default: omit.
+#           new_owner: str - Role (user/group) to set as obj_name owner.
+#               Default: user.name.
+#           obj_name: str - Database object name to change ownership. Mutually
+#                 exclusive with reassign_owned_by.
+#               Default: omit.
+#           obj_type: str - Database object type. Mutually exclusive with
+#                 reassign_owned_by.
+#               Values:
+#                                 aggregate: aggregate database object type.
+#                                 collation: collation database object type.
+#                                conversion: conversion database object type.
+#                                  database: database database object type.
+#                                    domain: domain database object type.
+#                             event_trigger: event_trigger database object
+#                                            type.
+#                      foreign_data_wrapper: foreign_data_wrapper database
+#                                            object type.
+#                             foreign_table: foreign_table database object
+#                                            type.
+#                                  function: function database object type.
+#                                  language: language database object type.
+#                              large_object: large_object database object type.
+#                                   matview: matview database object type.
+#                                 procedure: procedure database object type.
+#                               publication: publication database object type.
+#                                   routine: routine database object type.
+#                                    schema: schema database object type.
+#                                  sequence: sequence database object type.
+#                                    server: server database object type.
+#                                statistics: statistics database object type.
+#                                     table: table database object type.
+#                                tablespace: tablespace database object type.
+#                 text_search_configuration: text_search_configuration database
+#                                            object type.
+#                    text_search_dictionary: text_search_dictionary database
+#                                            object type.
+#                                      type: type database object type.
+#                                      view: view database object type.
+#               Default: omit.
+#           reassign_owned_by: str or list of str - Reassign all object owned
+#                 by this role (user/group) to new_owner. Mutually exclusive
+#                 with obj_type.
+#
+#                 Does not affect objects within other databases. Cannot
+#                 reassign ownership of objects that are required by database
+#                 system.
+#               Default: omit.
 #       priv: list of dict - User privileges configuration from
 #               community.postgresql.postgresql_privs. Options from user
 #               definition are automatically included; applied in listed order.
@@ -203,11 +268,14 @@
 #     append_privs: false
 #     encrypted: true
 #     extensions:
+#       database_owner:
+#         - 'some_app'
+#       owner:
+#         - db: 'some_other_app'
+#           new_owner: 'example'
+#           reassign_owned_by: 'old_owner'
 #       priv:
 #         - database: 'postgres'
-#           privs: 'ALL'
-#           type: 'database'
-#         - database: 'some_app'
 #           privs: 'ALL'
 #           type: 'database'
 #
@@ -215,5 +283,6 @@
 #
 # Reference:
 # * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_user_module.html
+# * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_owner_module.html
 # * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_privs_module.html
 postgres_users: []
