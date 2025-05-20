@@ -1,5 +1,6 @@
 ---
 galaxy_info:
+  role_name: 'postgres'
   author: 'r_pufky'
   description: 'Postgres Server'
   company: 'N/A'

@@ -22,7 +22,7 @@
 #   system_username: str - Client username.
 #       Special Case:
 #         /{REGEX}: Regular expression name match (starts with /). This can
-#                   contain a capture (a parenthesized subexpression).  The
+#                   contain a capture (a parenthesized sub expression).  The
 #                   substring matching the capture will be substituted for \1
 #                   (backslash-one) if present in PG-USERNAME.
 #   pg_username: str - Postgres username.

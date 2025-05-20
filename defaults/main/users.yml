@@ -33,7 +33,8 @@
 #           There parameters take precedence.
 #       {KEY}: {VALUE} - Configuration parameter.
 #           Default: postgres_user_connection.connect_params or {}.
-#     db: str - Database to connect to and where user permissions are granted.
+#     login_db: str - Database to connect to and where user permissions are
+#           granted.
 #         Default: ''.
 #     encrypted: bool - Store password as hash in database?
 #         Default: true.
@@ -130,10 +131,10 @@
 #       owner: list of dict - Owner privileges user configuration from
 #               community.postgresql.postgresql_owner. Options from user
 #               definition are automatically included; applied in listed order.
-#         - db: str - Database to connect to.
+#         - login_db: str - Database to connect to.
 #                 Certain operations require specifying a different database
 #                 for assigning privileges.
-#               Default: user.db or omit.
+#               Default: user.login_db or omit.
 #           fail_on_role: bool - Fail when reassign_owned_by role does not
 #                 exist? Otherwise warn and continue. Mutually exclusive with
 #                 obj_name and obj_type.
@@ -188,10 +189,10 @@
 #       priv: list of dict - User privileges configuration from
 #               community.postgresql.postgresql_privs. Options from user
 #               definition are automatically included; applied in listed order.
-#         - database: str - Database to connect to.
+#         - login_db: str - Database to connect to.
 #                 Certain operations require specifying a different database
 #                 for assigning privileges.
-#               Default: user.db or omit.
+#               Default: user.login_db or omit.
 #           grant_option: bool - User (role) may grant/revoke specified
 #                 privileges/group memberships to others.
 #               Requires: state=present.
@@ -271,11 +272,11 @@
 #       database_owner:
 #         - 'some_app'
 #       owner:
-#         - db: 'some_other_app'
+#         - login_db: 'some_other_app'
 #           new_owner: 'example'
 #           reassign_owned_by: 'old_owner'
 #       priv:
-#         - database: 'postgres'
+#         - login_db: 'postgres'
 #           privs: 'ALL'
 #           type: 'database'
 #

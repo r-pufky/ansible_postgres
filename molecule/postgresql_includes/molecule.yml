@@ -1,12 +1,17 @@
 ---
-# yamllint disable rule:line-length
-# Confirm:
+###############################################################################
+# PostgreSQL Includes
+###############################################################################
+# postgresql.conf files are rendered correctly for all options.
+#
+# Tests:
 # * postgresql.conf - include_dir (all configs) sources directory correctly.
 # * postgresql.conf - include_if_exists sources existing and non-existing file
 #   correctly.
 # * postgresql.conf - include - sources existing file correctly.
 # * All options specified with multiple values are rendered multiple times.
 # * Service is active and running.
+
 dependency:
   name: 'galaxy'
 driver:
@@ -38,7 +43,10 @@ provisioner:
             database: 'all'
             user: 'all'
             method: 'trust'
-        postgres_service_confd_path: '{{ lookup("env", "MOLECULE_SCENARIO_DIRECTORY") }}/files/conf.d'
+        postgres_service_confd_path: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/conf.d"
+          }}'
         postgres_config_include_dir:
           - 'conf.d'
         postgres_config_include_if_exists:
@@ -47,7 +55,7 @@ provisioner:
         postgres_config_include:
           - '/tmp/include.conf'
 platforms:
-  - name: 'postgres-debian-12-postgres_includes'
+  - name: 'postgres-debian-12-postgresql_includes'
     image: 'ghcr.io/hifis-net/debian-systemd:12'
     systemd: 'always'
     volumes:

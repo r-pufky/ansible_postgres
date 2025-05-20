@@ -1,7 +1,6 @@
 ---
-# yamllint disable rule:line-length
 - name: 'Postgresql includes | verify database'
-  hosts: 'postgres-debian-12-postgres_includes'
+  hosts: 'all'
   gather_facts: false
   tasks:
     - name: 'Postgresql includes | verify database | gather service status'
@@ -15,34 +14,38 @@
       register: _test_postgres_processes
 
     # Will be enabled but not running, forked from @ service for version.
-    - name: 'Postgresql includes | verify database | assert postgresql@.service enabled'
+    - name: >
+        Postgresql includes | verify database |
+        assert postgresql@.service enabled
       ansible.builtin.assert:
+        quiet: true
         that:
           - '"postgresql.service" in ansible_facts.services'
-          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'
-        fail_msg: 'postgresql.service should be active.'
+          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'  # yamllint disable-line rule:line-length
+        fail_msg: '✘ postgresql.service should be active.'
 
-    - name: 'Postgresql includes | verify database | assert postgresql@.service running'
+    - name: >
+        Postgresql includes | verify database |
+        assert postgresql@.service running
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_postgres_processes.stdout_lines | length > 2
-        fail_msg: 'Postgres has not successfully started.'
+        fail_msg: '✘ Postgres has not successfully started.'
 
-    - name: 'Postgresql includes | verify config | query postgresql.conf'
-      ansible.builtin.copy:
-        src: 'files/postgresql.conf'
-        dest: '/etc/postgresql/17/main/postgresql.conf'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0644'
-      check_mode: true
-      diff: true
-      register: _test_postgres_postgresql
-
-    - name: 'Postgresql includes | verify config | assert postgresql.conf'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_postgresql.changed
-        fail_msg: >
-          /etc/postgresql/17/main/postgresql.conf is not in expected format:
-          {{ _test_postgres_postgresql.diff }}.
+    - name: >
+        Postgresql includes | verify config |
+        /etc/postgresql/17/main/postgresql.conf
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'copy.yml'
+      vars:
+        test_name: >
+          Postgresql includes | verify config |
+          /etc/postgresql/17/main/postgresql.conf
+        test_src: 'files/postgresql.conf'
+        test_file: '/etc/postgresql/17/main/postgresql.conf'
+        test_owner: 'postgres'
+        test_group: 'postgres'
+        test_mode: '0644'
+        test_diff: true

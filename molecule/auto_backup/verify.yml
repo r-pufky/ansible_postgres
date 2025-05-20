@@ -1,5 +1,4 @@
 ---
-# yamllint disable rule:line-length
 - name: 'Auto backup | verify database'
   hosts: 'all'
   gather_facts: false
@@ -15,24 +14,28 @@
       register: _test_postgres_processes
 
     # Will be enabled but not running, forked from @ service for version.
-    - name: 'Auto backup | verify database | assert postgresql@.service enabled'
+    - name:
+        'Auto backup | verify database | assert postgresql@.service enabled'
       ansible.builtin.assert:
+        quiet: true
         that:
           - '"postgresql.service" in ansible_facts.services'
-          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'
-        fail_msg: 'postgresql.service should be active.'
+          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'  # yamllint disable-line rule:line-length
+        fail_msg: '✘ postgresql.service should be active.'
 
-    - name: 'Auto backup | verify database | assert postgresql@.service running'
+    - name:
+        'Auto backup | verify database | assert postgresql@.service running'
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_postgres_processes.stdout_lines | length > 2
-        fail_msg: 'Postgres has not successfully started.'
+        fail_msg: '✘ Postgres has not successfully started.'
 
     # community.postgresql.postgresql_user - just check DB is created.
     - name: 'Auto backup | verify database | query DB skeleton'
       community.postgresql.postgresql_query:
-        db: 'skeleton'
-        query: 'select tablename from pg_catalog.pg_tables where schemaname=%(schema)s'
+        login_db: 'skeleton'
+        query: 'select tablename from pg_catalog.pg_tables where schemaname=%(schema)s'  # yamllint disable-line rule:line-length
         named_args:
           schema: 'public'
         login_host: 'localhost'
@@ -45,14 +48,16 @@
 
     - name: 'Auto backup | verify database | assert DB skeleton created'
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_query.rowcount == 1
-        fail_msg: 'skeleton.backup DB does not exist.'
+        fail_msg: '✘ skeleton.backup DB does not exist.'
 
-    - name: 'Auto backup | verify database | query DB skeleton table permissions'
+    - name:
+        'Auto backup | verify database | query DB skeleton table permissions'
       community.postgresql.postgresql_query:
-        db: 'skeleton'
-        query: 'select tableowner from pg_catalog.pg_tables where tablename=%(table)s and tableowner=%(owner)s'
+        login_db: 'skeleton'
+        query: 'select tableowner from pg_catalog.pg_tables where tablename=%(table)s and tableowner=%(owner)s'  # yamllint disable-line rule:line-length
         named_args:
           table: 'backup'
           owner: 'example'
@@ -64,18 +69,22 @@
       become_user: 'postgres'
       register: _test_query
 
-    - name: 'Auto backup | verify database | assert DB skeleton table permissions'
+    - name:
+        'Auto backup | verify database | assert DB skeleton table permissions'
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_query.rowcount == 1
         fail_msg: >
-          skeleton.backup should be owned by example role.
+          ✘ skeleton.backup should be owned by example role.
           ({{ _test_query.query_result }}).
 
-    - name: 'Auto backup | verify database | query DB skeleton sequence permissions'
+    - name: >
+        Auto backup | verify database | query DB skeleton sequence permissions
       community.postgresql.postgresql_query:
-        db: 'skeleton'
-        query: 'select * from pg_catalog.pg_sequences where sequenceowner=%(owner)s'
+        login_db: 'skeleton'
+        query:
+          'select * from pg_catalog.pg_sequences where sequenceowner=%(owner)s'
         named_args:
           owner: 'example'
         login_host: 'localhost'
@@ -86,26 +95,32 @@
       become_user: 'postgres'
       register: _test_query
 
-    - name: 'Auto backup | verify database | assert DB skeleton sequence permissions'
+    - name: >
+        Auto backup | verify database | assert DB skeleton sequence permissions
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_query.rowcount == 1
         fail_msg: >
-          pg_sequences should be owned by example role.
+          ✘ pg_sequences should be owned by example role.
           ({{ _test_query.query_result }}).
 
 - name: 'Auto backup | verify backup disabled'
   hosts: 'postgres-debian-12-auto_backup-disable'
   gather_facts: false
   tasks:
-    - name: 'Auto backup | verify backup disabled | query postgres_backup'
-      ansible.builtin.stat:
-        path: '/etc/postgresql/17/scripts/postgres_backup'
-      register: _test_postgres_backup
-
-    - name: 'Auto backup | verify backup disabled| assert postgres_backup'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_backup.stat.exists
-        fail_msg: >
-          /etc/postgresql/17/scripts/postgres_backup should be removed.
+    - name: >
+        Auto backup | verify backup disabled |
+        /etc/postgresql/17/scripts/postgres_backup
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'file.yml'
+      vars:
+        test_name: >
+          Auto backup | verify backup disabled |
+          /etc/postgresql/17/scripts/postgres_backup
+        test_file: '/etc/postgresql/17/scripts/postgres_backup'
+        test_owner: '{{ omit }}'
+        test_group: '{{ omit }}'
+        test_mode: '{{ omit }}'
+        test_state: 'absent'

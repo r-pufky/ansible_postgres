@@ -1,5 +1,4 @@
 ---
-# yamllint disable rule:line-length
 - name: 'Default | verify database'
   hosts: 'all'
   gather_facts: false
@@ -17,21 +16,23 @@
     # Will be enabled but not running, forked from @ service for version.
     - name: 'Default | verify database | assert postgresql@.service enabled'
       ansible.builtin.assert:
+        quiet: true
         that:
           - '"postgresql.service" in ansible_facts.services'
-          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'
-        fail_msg: 'postgresql.service should be active.'
+          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'  # yamllint disable-line rule:line-length
+        fail_msg: '✘ postgresql.service should be active.'
 
     - name: 'Default | verify database | assert postgresql@.service running'
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_postgres_processes.stdout_lines | length > 2
-        fail_msg: 'Postgres has not successfully started.'
+        fail_msg: '✘ Postgres has not successfully started.'
 
     # community.postgresql.postgresql_user - just check user is created.
     - name: 'Default | verify database | query user example'
       community.postgresql.postgresql_query:
-        db: 'postgres'
+        login_db: 'postgres'
         query: 'select * from pg_catalog.pg_user where usename=%(user)s'
         named_args:
           user: 'example'
@@ -45,14 +46,15 @@
 
     - name: 'Default | verify database | assert user example created'
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_query.rowcount == 1
-        fail_msg: 'example user does not exist.'
+        fail_msg: '✘ example user does not exist.'
 
     # community.postgresql.postgresql_user - just check DB is created.
     - name: 'Default | verify database | query DB test1'
       community.postgresql.postgresql_query:
-        db: 'postgres'
+        login_db: 'postgres'
         query: 'select datname from pg_database where datname=%(db)s'
         named_args:
           db: 'test1'
@@ -66,162 +68,60 @@
 
     - name: 'Default | verify database | assert DB test1 created'
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_query.rowcount == 1
-        fail_msg: 'roundcube DB does not exist.'
+        fail_msg: '✘ roundcube DB does not exist.'
 
 - name: 'Default | verify config'
   hosts: 'all'
   gather_facts: false
   tasks:
-    - name: 'Default | verify config | query /etc/profile.d/postgres'
-      ansible.builtin.copy:
-        src: 'files/postgres'
-        dest: '/etc/profile.d/postgres'
-        owner: 'root'
-        group: 'root'
-        mode: '0644'
-      check_mode: true
-      diff: true
-      register: _test_postgres_profile
+    - name: 'Default | verify config | /etc/profile.d/postgres'
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'copy.yml'
+      vars:
+        test_name: 'Default | verify config | /etc/profile.d/postgres'
+        test_src: 'files/postgres'
+        test_file: '/etc/profile.d/postgres'
+        test_owner: 'root'
+        test_group: 'root'
+        test_mode: '0644'
 
-    - name: 'Default | verify config | assert /etc/profile.d/postgres'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_profile.changed
-        fail_msg: >
-          /etc/profile.d/postgres is not in expected format:
-          {{ _test_postgres_profile.diff }}.
+    - name:
+        'Default | verify config | /etc/postgresql/17/scripts/postgres_owner'
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'copy.yml'
+      vars:
+        test_name:
+          'Default | verify config | /etc/postgresql/17/scripts/postgres_owner'
+        test_src: 'files/postgres_owner'
+        test_file: '/etc/postgresql/17/scripts/postgres_owner'
+        test_owner: 'postgres'
+        test_group: 'postgres'
+        test_mode: '0700'
 
-    - name: 'Default | verify config | query postgres_owner'
-      ansible.builtin.copy:
-        src: 'files/postgres_owner'
-        dest: '/etc/postgresql/17/scripts/postgres_owner'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0700'
-      check_mode: true
-      diff: true
-      register: _test_postgres_owner
-
-    - name: 'Default | verify config | assert postgres_owner'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_owner.changed
-        fail_msg: >
-          /etc/postgresql/17/scripts/postgres_owner is not in expected format:
-          {{ _test_postgres_owner.diff }}.
-
-    - name: 'Default | verify config | query environment'
-      ansible.builtin.copy:
-        src: 'files/environment'
-        dest: '/etc/postgresql/17/main/environment'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0644'
-      check_mode: true
-      diff: true
-      register: _test_postgres_environment
-
-    - name: 'Default | verify config | assert environment'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_environment.changed
-        fail_msg: >
-          /etc/postgresql/17/main/environment is not in expected format:
-          {{ _test_postgres_environment.diff }}.
-
-    - name: 'Default | verify config | query postgresql.conf'
-      ansible.builtin.copy:
-        src: 'files/postgresql.conf'
-        dest: '/etc/postgresql/17/main/postgresql.conf'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0644'
-      check_mode: true
-      diff: true
-      register: _test_postgres_postgresql
-
-    - name: 'Default | verify config | assert postgresql.conf'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_postgresql.changed
-        fail_msg: >
-          /etc/postgresql/17/main/postgresql.conf is not in expected format:
-          {{ _test_postgres_postgresql.diff }}.
-
-    - name: 'Default | verify config | query pg_hba.conf'
-      ansible.builtin.copy:
-        src: 'files/pg_hba.conf'
-        dest: '/etc/postgresql/17/main/pg_hba.conf'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0640'
-      check_mode: true
-      diff: true
-      register: _test_postgres_pg_hba
-
-    - name: 'Default | verify config | assert pg_hba.conf'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_pg_hba.changed
-        fail_msg: >
-          /etc/postgresql/17/main/pg_hba.conf is not in expected format:
-          {{ _test_postgres_pg_hba.diff }}.
-
-    - name: 'Default | verify config | query pg_ident.conf'
-      ansible.builtin.copy:
-        src: 'files/pg_ident.conf'
-        dest: '/etc/postgresql/17/main/pg_ident.conf'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0640'
-      check_mode: true
-      diff: true
-      register: _test_postgres_pg_ident
-
-    - name: 'Default | verify config | assert pg_ident.conf'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_pg_ident.changed
-        fail_msg: >
-          /etc/postgresql/17/main/pg_ident.conf is not in expected format:
-          {{ _test_postgres_pg_ident.diff }}.
-
-    - name: 'Default | verify config | query pg_ctl.conf'
-      ansible.builtin.copy:
-        src: 'files/pg_ctl.conf'
-        dest: '/etc/postgresql/17/main/pg_ctl.conf'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0644'
-      check_mode: true
-      diff: true
-      register: _test_postgres_pg_ctl
-
-    - name: 'Default | verify config | assert pg_ctl.conf'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_pg_ctl.changed
-        fail_msg: >
-          /etc/postgresql/17/main/pg_ctl.conf is not in expected format:
-          {{ _test_postgres_pg_ctl.diff }}.
-
-    - name: 'Default | verify config | query start.conf'
-      ansible.builtin.copy:
-        src: 'files/start.conf'
-        dest: '/etc/postgresql/17/main/start.conf'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0644'
-      check_mode: true
-      diff: true
-      register: _test_postgres_start
-
-    - name: 'Default | verify config | assert start.conf'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_start.changed
-        fail_msg: >
-          /etc/postgresql/17/main/start.conf is not in expected format:
-          {{ _test_postgres_start.diff }}.
+    - name:
+        'Default | verify config | /etc/postgresql/17/main'
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'copy.yml'
+      vars:
+        test_name:
+          'Default | verify config | /etc/postgresql/17/main/{{ item.file }}'
+        test_src: 'files/{{ item.file }}'
+        test_file: '/etc/postgresql/17/main/{{ item.file }}'
+        test_owner: 'postgres'
+        test_group: 'postgres'
+        test_mode: '{{ item.mode }}'
+      loop:
+        - {file: 'environment', mode: '0644'}
+        - {file: 'postgresql.conf', mode: '0644'}
+        - {file: 'pg_hba.conf', mode: '0640'}
+        - {file: 'pg_ident.conf', mode: '0640'}
+        - {file: 'pg_ctl.conf', mode: '0644'}
+        - {file: 'start.conf', mode: '0644'}
+      loop_control:
+        label: '{{ item.file }}'

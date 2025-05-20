@@ -1,12 +1,15 @@
 ---
-# yamllint disable rule:line-length
 ###############################################################################
 # Ports Configuration
 ###############################################################################
-# Manage firewall with r_pufky.srv.ufw.
+# Manage firewall with r_pufky.deb.ufw.
 #
 # Reference:
 # * https://github.com/r-pufky/ansible_ufw
 
 postgres_ports:
-  - {proto: 'tcp', from_ip: 'any', to_port: 5432, direction: 'in', comment: 'postgresql service'}
+  - proto: 'tcp'
+    from_ip: 'any'
+    to_port: 5432
+    direction: 'in'
+    comment: 'postgresql service'

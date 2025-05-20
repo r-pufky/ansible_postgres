@@ -17,10 +17,15 @@
 # * https://github.com/ansible/ansible/issues/29774
 # * https://semisignal.com/postgresql-database-import-with-ansible/
 # * https://stackoverflow.com/questions/1348126/modify-owner-on-all-tables-simultaneously-in-postgresql
+# yamllint enable rule:line-length
 
 - name: 'Manage | users | extensions | database_owner'
   when: user.extensions.database_owner is defined
-  ansible.builtin.command: '{{ _postgres_scripts }}/postgres_owner "{{ item }}" "{{ user.name }}"'
+  ansible.builtin.command:
+    argv:
+      - '{{ _postgres_scripts }}/postgres_owner'
+      - '{{ item }}'
+      - '{{ user.name }}'
   register: _postgres_owner_script
   failed_when: _postgres_owner_script.rc != 0
   changed_when: true
@@ -31,52 +36,183 @@
 - name: 'Manage | users | extensions | owner'
   when: user.extensions.owner is defined
   community.postgresql.postgresql_owner:
-    ca_cert: '{{ (user.ca_cert if user.ca_cert is defined else postgres_user_connection.ca_cert) | default(omit) }}'
-    connect_params: '{{ (user.connect_params if user.connect_params is defined else postgres_user_connection.connect_params) | default({}) }}'
-    db: '{{ (owner.db if owner.db is defined else user.db) | default(omit) }}'
+    ca_cert: '{{
+        (user.ca_cert
+         if user.ca_cert is defined else
+         postgres_user_connection.ca_cert) |
+        default(omit)
+      }}'
+    connect_params: '{{
+        (user.connect_params
+         if user.connect_params is defined else
+         postgres_user_connection.connect_params) |
+        default({})
+      }}'
+    login_db: '{{
+        (owner.login_db
+         if owner.login_db is defined else
+         user.login_db) |
+        default(omit)
+      }}'
     fail_on_role: '{{ owner.fail_on_role | default(omit) }}'
-    login_host: '{{ (user.login_host if user.login_host is defined else postgres_user_connection.login_host) | default("localhost") }}'
-    login_password: '{{ (user.login_password if user.login_password is defined else postgres_user_connection.login_password) | default(omit) }}'
-    login_unix_socket: '{{ (user.login_unix_socket if user.login_unix_socket is defined else postgres_user_connection.login_unix_socket) | default(postgres_config.unix_socket_directories[0]) }}'
-    login_user: '{{ (user.login_user if user.login_user is defined else postgres_user_connection.login_user) | default("postgres") }}'
-    new_owner: '{{ owner.new_owner if owner.new_owner is defined else user.name }}'
+    login_host: '{{
+        (user.login_host
+         if user.login_host is defined else
+         postgres_user_connection.login_host) |
+        default("localhost")
+      }}'
+    login_password: '{{
+        (user.login_password
+         if user.login_password is defined else
+         postgres_user_connection.login_password) |
+        default(omit)
+      }}'
+    login_unix_socket: '{{
+        (user.login_unix_socket
+         if user.login_unix_socket is defined else
+         postgres_user_connection.login_unix_socket) |
+        default(postgres_config.unix_socket_directories[0])
+      }}'
+    login_user: '{{
+        (user.login_user
+         if user.login_user is defined else
+         postgres_user_connection.login_user) |
+        default("postgres")
+      }}'
+    new_owner:
+      '{{ owner.new_owner if owner.new_owner is defined else user.name }}'
     obj_name: '{{ owner.obj_name | default(omit) }}'
     obj_type: '{{ owner.obj_type | default(omit) }}'
-    port: '{{ (user.port if user.port is defined else postgres_user_connection.port) | default(postgres_config.port) }}'
+    port: '{{
+        (user.port
+         if user.port is defined else
+         postgres_user_connection.port) |
+        default(postgres_config.port)
+      }}'
     reassign_owned_by: '{{ owner.reassign_owned_by | default(omit) }}'
-    session_role: '{{ (user.session_role if user.session_role is defined else postgres_user_connection.session_role) | default(omit) }}'
-    ssl_cert: '{{ (user.ssl_cert if user.ssl_cert is defined else postgres_user_connection.ssl_cert) | default(omit) }}'
-    ssl_key: '{{ (user.ssl_key if user.ssl_key is defined else postgres_user_connection.ssl_key) | default(omit) }}'
-    ssl_mode: '{{ (user.ssl_mode if user.ssl_mode is defined else postgres_user_connection.ssl_mode) | default("prefer") }}'
+    session_role: '{{
+        (user.session_role
+         if user.session_role is defined else
+         postgres_user_connection.session_role) |
+        default(omit)
+      }}'
+    ssl_cert: '{{
+        (user.ssl_cert
+         if user.ssl_cert is defined else
+         postgres_user_connection.ssl_cert) |
+        default(omit)
+      }}'
+    ssl_key: '{{
+        (user.ssl_key
+         if user.ssl_key is defined else
+         postgres_user_connection.ssl_key) |
+        default(omit)
+      }}'
+    ssl_mode: '{{
+        (user.ssl_mode
+         if user.ssl_mode is defined else
+         postgres_user_connection.ssl_mode) |
+        default("prefer")
+      }}'
     trust_input: '{{ user.trust_input | default(true) }}'
   become: true
   become_user: '{{ postgres_user }}'
   loop: '{{ user.extensions.owner }}'
   loop_control:
     loop_var: 'owner'
-    label: '{{ owner.db }} {{ owner.new_owner | default(user.name) }}: {{ owner.obj_name | default("") }} {{ owner.obj_type | default("") }} {{ owner.reassign_owned_by | default("") }}'
+    label: '{{
+        owner.login_db ~ " " ~
+        owner.new_owner | default(user.name) ~ ":" ~
+        owner.obj_name | default("") ~ " " ~
+        owner.obj_type | default("") ~ " " ~
+        owner.reassign_owned_by | default("")
+      }}'
 
 - name: 'Manage | users | extensions | priv'
   when: user.extensions.priv is defined
   community.postgresql.postgresql_privs:
-    ca_cert: '{{ (user.ca_cert if user.ca_cert is defined else postgres_user_connection.ca_cert) | default(omit) }}'
-    connect_params: '{{ (user.connect_params if user.connect_params is defined else postgres_user_connection.connect_params) | default({}) }}'
-    database: '{{ (priv.database if priv.database is defined else user.db) | default(omit) }}'
+    ca_cert: '{{
+        (user.ca_cert
+         if user.ca_cert is defined else
+         postgres_user_connection.ca_cert) |
+        default(omit)
+      }}'
+    connect_params: '{{
+        (user.connect_params
+         if user.connect_params is defined else
+         postgres_user_connection.connect_params) |
+        default({})
+      }}'
+    login_db: '{{
+        (priv.login_db
+         if priv.login_db is defined else
+         user.login_db) |
+        default(omit)
+      }}'
     fail_on_role: '{{ user.fail_on_user | default(true) }}'
     grant_option: '{{ priv.grant_option | default(omit) }}'
-    login_host: '{{ (user.login_host if user.login_host is defined else postgres_user_connection.login_host) | default("localhost") }}'
-    login_password: '{{ (user.login_password if user.login_password is defined else postgres_user_connection.login_password) | default(omit) }}'
-    login_unix_socket: '{{ (user.login_unix_socket if user.login_unix_socket is defined else postgres_user_connection.login_unix_socket) | default(postgres_config.unix_socket_directories[0]) }}'
-    login_user: '{{ (user.login_user if user.login_user is defined else postgres_user_connection.login_user) | default("postgres") }}'
+    login_host: '{{
+        (user.login_host
+         if user.login_host is defined else
+         postgres_user_connection.login_host) |
+        default("localhost")
+      }}'
+    login_password: '{{
+        (user.login_password
+         if user.login_password is defined else
+         postgres_user_connection.login_password) |
+        default(omit)
+      }}'
+    login_unix_socket: '{{
+        (user.login_unix_socket
+         if user.login_unix_socket is defined else
+         postgres_user_connection.login_unix_socket) |
+        default(postgres_config.unix_socket_directories[0])
+      }}'
+    login_user: '{{
+        (user.login_user
+         if user.login_user is defined else
+         postgres_user_connection.login_user) |
+        default("postgres")
+      }}'
     objs: '{{ priv.objs | default(omit) }}'
-    port: '{{ (user.port if user.port is defined else postgres_user_connection.port) | default(postgres_config.port) }}'
+    port: '{{
+        (user.port
+         if user.port is defined else
+         postgres_user_connection.port) |
+        default(postgres_config.port)
+      }}'
     privs: '{{ priv.privs | default(omit) }}'
-    roles: '{{ priv.roles if priv.roles is defined else user.name | default(omit) }}'
+    roles: '{{
+        priv.roles
+        if priv.roles is defined else
+        user.name | default(omit)
+      }}'
     schema: '{{ priv.schema | default(omit) }}'
-    session_role: '{{ (user.session_role if user.session_role is defined else postgres_user_connection.session_role) | default(omit) }}'
-    ssl_cert: '{{ (user.ssl_cert if user.ssl_cert is defined else postgres_user_connection.ssl_cert) | default(omit) }}'
-    ssl_key: '{{ (user.ssl_key if user.ssl_key is defined else postgres_user_connection.ssl_key) | default(omit) }}'
-    ssl_mode: '{{ (user.ssl_mode if user.ssl_mode is defined else postgres_user_connection.ssl_mode) | default("prefer") }}'
+    session_role: '{{
+        (user.session_role
+         if user.session_role is defined else
+         postgres_user_connection.session_role) |
+        default(omit)
+      }}'
+    ssl_cert: '{{
+        (user.ssl_cert
+         if user.ssl_cert is defined else
+         postgres_user_connection.ssl_cert) |
+        default(omit)
+      }}'
+    ssl_key: '{{
+        (user.ssl_key
+         if user.ssl_key is defined else
+         postgres_user_connection.ssl_key) |
+        default(omit)
+      }}'
+    ssl_mode: '{{
+        (user.ssl_mode
+         if user.ssl_mode is defined else
+         postgres_user_connection.ssl_mode) |
+        default("prefer")
+      }}'
     state: '{{ user.state | default("present") }}'
     target_roles: '{{ priv.target_roles | default(omit) }}'
     trust_input: '{{ user.trust_input | default(true) }}'
@@ -86,4 +222,4 @@
   loop: '{{ user.extensions.priv }}'
   loop_control:
     loop_var: 'priv'
-    label: '{{ priv.database }} {{ priv.type | default("") }} {{ priv.privs }}'
+    label: '{{ priv.login_db }} {{ priv.type | default("") }} {{ priv.privs }}'

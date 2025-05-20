@@ -1,12 +1,14 @@
 ---
-# yamllint disable rule:line-length
 - name: 'Postgresql includes | converge'
   hosts: 'all'
   gather_facts: false
   tasks:
     - name: 'Postgresql includes | converge | inject include sources'
       ansible.builtin.copy:
-        src: '{{ lookup("env", "MOLECULE_SCENARIO_DIRECTORY") }}/files/{{ item }}'
+        src: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/" ~ item
+          }}'
         dest: '/tmp/{{ item }}'
         owner: 'root'
         group: 'root'

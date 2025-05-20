@@ -1,8 +1,14 @@
 ---
-# Confirm:
+###############################################################################
+# Auto Backup
+###############################################################################
+# Auto import from database backup works correctly.
+#
+# Tests:
 # * Database creation and import from auto-backup works.
 # * Enabling, then disabling auto-backup removes expected files.
 # * Imported database has ownership permission set properly from shell script.
+
 dependency:
   name: 'galaxy'
 driver:
@@ -20,7 +26,7 @@ provisioner:
       all:
         postgres_users:
           - name: 'example'
-            db: 'postgres'
+            login_db: 'postgres'
             host: 'localhost'
             password: 'example'
             state: 'present'

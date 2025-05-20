@@ -5,7 +5,7 @@
 
 # List of postgres cluster specific options.
 #
-# Options to pass to pg_ctl via pg_ctl.conf. Options are automatically qouted.
+# Options to pass to pg_ctl via pg_ctl.conf. Options are automatically quoted.
 #
 # Default: [].
 #

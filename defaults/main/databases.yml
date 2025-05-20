@@ -248,5 +248,8 @@ postgres_databases_backup_options:
   - '--no-privileges'
   - '--username={{ postgres_user | default("postgres") }}'
   - '--no-password'
-  - '--host={{ postgres_user_connection.login_unix_socket | default("localhost") }}'
+  - '{{
+      "--host=" ~
+      postgres_user_connection.login_unix_socket | default("localhost")
+    }}'
   - '--port={{ postgres_user_connection.port | default(5432) }}'

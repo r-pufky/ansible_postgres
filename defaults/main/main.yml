@@ -96,7 +96,7 @@ postgres_group: 'postgres'
 
 # Create postgres_user, postgres_group if not detected?
 #
-# Applied via r_pufky.srv.users, see vars/main.yml for default user attributes.
+# Applied via r_pufky.deb.users, see vars/main.yml for default user attributes.
 #
 # Default: True.
 postgres_create_user: true

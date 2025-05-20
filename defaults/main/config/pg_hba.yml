@@ -4,7 +4,7 @@
 ###############################################################################
 # Users must also have CONNECT privileges on Database to connect.
 
-# Host Based Authencation.
+# Host Based Authentication.
 #
 # Special Case:
 #   *: Database and user names containing spaces, commas, quotes and other

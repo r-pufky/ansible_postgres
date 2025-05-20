@@ -1,5 +1,4 @@
 ---
-# yamllint disable rule:line-length
 - name: 'Ident includes | verify database'
   hosts: 'postgres-debian-12-ident_includes'
   gather_facts: false
@@ -15,34 +14,34 @@
       register: _test_postgres_processes
 
     # Will be enabled but not running, forked from @ service for version.
-    - name: 'Ident includes | verify database | assert postgresql@.service enabled'
+    - name:
+        'Ident includes | verify database | assert postgresql@.service enabled'
       ansible.builtin.assert:
+        quiet: true
         that:
           - '"postgresql.service" in ansible_facts.services'
-          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'
-        fail_msg: 'postgresql.service should be active.'
+          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'  # yamllint disable-line rule:line-length
+        fail_msg: '✘ postgresql.service should be active.'
 
-    - name: 'Ident includes | verify database | assert postgresql@.service running'
+    - name:
+        'Ident includes | verify database | assert postgresql@.service running'
       ansible.builtin.assert:
+        quiet: true
         that:
           - _test_postgres_processes.stdout_lines | length > 2
-        fail_msg: 'Postgres has not successfully started.'
+        fail_msg: '✘ Postgres has not successfully started.'
 
-    - name: 'Ident includes | verify config | query pg_ident.conf'
-      ansible.builtin.copy:
-        src: 'files/pg_ident.conf'
-        dest: '/etc/postgresql/17/main/pg_ident.conf'
-        owner: 'postgres'
-        group: 'postgres'
-        mode: '0640'
-      check_mode: true
-      diff: true
-      register: _test_postgres_pg_ident
-
-    - name: 'Ident includes | verify config | assert pg_ident.conf'
-      ansible.builtin.assert:
-        that:
-          - not _test_postgres_pg_ident.changed
-        fail_msg: >
-          /etc/postgresql/17/main/pg_ident.conf is not in expected format:
-          {{ _test_postgres_pg_ident.diff }}.
+    - name: >
+        Ident includes | verify config | /etc/postgresql/17/main/pg_ident.conf
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'copy.yml'
+      vars:
+        test_name: >
+          Ident includes | verify config |
+          /etc/postgresql/17/main/pg_ident.conf
+        test_src: 'files/pg_ident.conf'
+        test_file: '/etc/postgresql/17/main/pg_ident.conf'
+        test_owner: 'postgres'
+        test_group: 'postgres'
+        test_mode: '0640'

@@ -1,5 +1,4 @@
 ---
-# yamllint disable rule:line-length
 ###############################################################################
 # Postgres Global (postgres.conf) Settings
 ###############################################################################
@@ -64,8 +63,10 @@ postgres_config:
   #
   # Automatically created if needed.
   #
-  # Default: '/etc/postgresql/{{ postgres_service_version }}/main/pg_ident.conf'.
-  ident_file: '/etc/postgresql/{{ postgres_service_version }}/main/pg_ident.conf'
+  # Default:
+  #   '/etc/postgresql/{{ postgres_service_version }}/main/pg_ident.conf'.
+  ident_file:
+    '/etc/postgresql/{{ postgres_service_version }}/main/pg_ident.conf'
 
   # PID file.
   #
@@ -74,8 +75,10 @@ postgres_config:
   #
   # Automatically created if needed.
   #
-  # Default: '/var/run/postgresql/{{ postgres_service_version }}-main.pid'
-  external_pid_file: '/var/run/postgresql/{{ postgres_service_version }}-main.pid'
+  # Default:
+  #   '/var/run/postgresql/{{ postgres_service_version }}-main.pid'
+  external_pid_file:
+    '/var/run/postgresql/{{ postgres_service_version }}-main.pid'
 
   #############################################################################
   # Connections & Authentication

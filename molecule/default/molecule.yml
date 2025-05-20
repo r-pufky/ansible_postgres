@@ -1,7 +1,13 @@
 ---
-# Confirm:
+###############################################################################
+# Default
+###############################################################################
+# Default values results in running service.
+#
+# Tests:
 # * Default installation results in a running Postgres server instance.
 # * Configuration files with options are rendered appropriately based on type.
+
 dependency:
   name: 'galaxy'
 driver:
@@ -26,17 +32,17 @@ provisioner:
             encrypted: true
             extensions:
               owner:
-                - db: 'test1'
+                - login_db: 'test1'
                   obj_type: 'table'
-                - db: 'test1'
+                - login_db: 'test1'
                   obj_type: 'sequence'
-                - db: 'test1'
+                - login_db: 'test1'
                   obj_type: 'view'
               priv:
-                - database: 'postgres'
+                - login_db: 'postgres'
                   privs: 'ALL'
                   type: 'database'
-                - database: 'test1'
+                - login_db: 'test1'
                   privs: 'ALL'
                   type: 'database'
         postgres_databases:

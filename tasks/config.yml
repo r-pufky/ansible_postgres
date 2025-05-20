@@ -1,5 +1,4 @@
 ---
-# yamllint disable rule:line-length
 ###############################################################################
 # Postgres Config
 ###############################################################################
@@ -27,14 +26,18 @@
   ansible.builtin.stat:
     path: '{{ postgres_config.data_directory }}/PG_VERSION'
   become: true
-  become_user: '{{ postgres_user }}'  # Mount points may have user restrictions.
+  become_user: '{{ postgres_user }}'  # Mounts may have user restrictions.
   register: _postgres_init
 
 - name: 'Config | initialize data directory'
   when: not _postgres_init.stat.exists
-  ansible.builtin.command: '{{ _postgres_bin }}/initdb -D {{ postgres_config.data_directory }}'
+  ansible.builtin.command:
+    argv:
+      - '{{ _postgres_bin }}/initdb'
+      - '-D'
+      - '{{ postgres_config.data_directory }}'
   become: true
-  become_user: '{{ postgres_user }}'  # Mount points may have user restrictions.
+  become_user: '{{ postgres_user }}'  # Mounts may have user restrictions.
   changed_when: true
 
 - name: 'Config | enable backups'
@@ -66,7 +69,7 @@
 
     - name: 'Config | enable backups | create backup service'
       ansible.builtin.include_role:
-        name: 'r_pufky.srv.systemd'
+        name: 'r_pufky.deb.systemd'
       vars:
         systemd_services:
           - name: 'postgres_backup'
@@ -103,7 +106,7 @@
 
     - name: 'Config | disable backups | remove backup service'
       ansible.builtin.include_role:
-        name: 'r_pufky.srv.systemd'
+        name: 'r_pufky.deb.systemd'
       vars:
         systemd_services:
           - name: 'postgres_backup'
@@ -122,7 +125,7 @@
     mode: '0700'
     state: 'directory'
   become: true
-  become_user: '{{ postgres_user }}'  # Mount points may have user restrictions.
+  become_user: '{{ postgres_user }}'  # Mounts may have user restrictions.
 
 - name: 'Config | create HBA directory'
   ansible.builtin.file:
