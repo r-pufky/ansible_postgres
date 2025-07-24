@@ -1,13 +1,12 @@
 ---
-- name: 'Postgresql includes | converge'
+- name: 'Converge'
   hosts: 'all'
   gather_facts: false
   tasks:
-    - name: 'Postgresql includes | converge | inject include sources'
+    - name: 'Converge | inject include sources'
       ansible.builtin.copy:
         src: '{{
-            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
-            "/files/" ~ item
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~ "/files/" ~ item
           }}'
         dest: '/tmp/{{ item }}'
         owner: 'root'
@@ -17,6 +16,6 @@
         - 'if_exists.conf'
         - 'include.conf'
 
-    - name: 'Postgresql includes | converge | apply r_pufky.srv.postgres'
+    - name: 'Converge | apply r_pufky.srv.postgres'
       ansible.builtin.include_role:
         name: 'r_pufky.srv.postgres'

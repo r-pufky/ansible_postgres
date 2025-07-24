@@ -4,10 +4,10 @@
 #
 set -e
 DATE_STAMP=`date +%Y-%m-%d`
-OWNER='{{ postgres_user | default("postgres") }}'
-GROUP='{{ postgres_group | default("postgres") }}'
-TARGET='{{ postgres_databases_backup_dir | default("/var/lib/postgres_backup") }}'
-OPTIONS='{{ postgres_databases_backup_options | join(" ") }}'
+OWNER='{{ _postgres_srv_user.raw }}'
+GROUP='{{ _postgres_srv_group.raw }}'
+TARGET='{{ _postgres_cfg_databases_backup_dir.raw }}'
+OPTIONS='{{ _postgres_cfg_databases_backup_options.role }}'
 
 function dump_all () {
   DUMP="${TARGET}/all-databases-${DATE_STAMP}.sql"
@@ -45,9 +45,9 @@ function compress_db () {
   chmod o-rwx "*.tar.xz" 2>/dev/null || true
 }
 
-{% if postgres_databases_backup_all_enable | default(true) %}
+{% if _postgres_cfg_databases_backup_all_enable.raw %}
 dump_all
 {% endif %}
-{% if postgres_databases_backup_individual_enable | default(true) %}
+{% if _postgres_cfg_databases_backup_individual_enable.raw %}
 dump_dbs
 {% endif %}

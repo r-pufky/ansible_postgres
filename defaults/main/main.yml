@@ -3,12 +3,29 @@
 ###############################################################################
 # Postgres Role Configuration
 ###############################################################################
-# psycopg2 is required on ansible controller.
+# Database version upgrades are currently not supported and must be done
+# manually (or export the database and import the database via the role).
+#
+# psycopg2 is required on ansible controller for community.postgresql.
+#
+# Install size: ~78MB
+#     NZBGet: ~59MB.
+#   Packages: ~19MB.
 
-# Postgres version to install.
+# Postgres Release.
 #
 # All versions are supported by the postgres Debian repository but may not be
 # fully supported by the role.
+#
+# Versions (Schematic):
+#       MAJOR: Unsafe - requires major role changes; only default version is
+#              supported; older versions may be used at the risk of missing
+#              dependencies or configuration parameters that are not supported.
+#              See other branches if they exist.
+#       MINOR: Safe - New functionality may not be properly supported in
+#              configuration.
+#       PATCH: Safe - Usually requires no role updates.
+#   RECOMMEND: Only use latest stable release.
 #
 # Values:
 #    17: Latest 17 stable release (default).
@@ -17,22 +34,24 @@
 #    14: 14.x release.
 #    13: 13.x release.
 #
+# Default: '17'.
+#
 # Reference:
 # * https://www.postgresql.org/download/linux/debian/
-postgres_service_version: '17'
+postgres_srv_version: '17'
 
 # Path to Postgres conf.d.
 #
 # Optional user-defined conf.d files configuration. Sourced from ansible
 # controller; automatically placed in
-# /etc/postgresql/{{ postgres_service_version }}/main/conf.d/ with correct
+# /etc/postgresql/{{ postgres_srv_version }}/main/conf.d/ with correct
 # permissions. Be sure to set appropriate paths for Postgres configuration
 # settings.
 #
-# postgres_service_confd_path: 'host_vars/db.example.com/data/conf.d'
+# postgres_srv_confd_path: 'host_vars/db.example.com/data/conf.d'
 #
 # Default: '' (disabled).
-postgres_service_confd_path: ''
+postgres_srv_confd_path: ''
 
 # Custom postgres global environment profile.
 #
@@ -44,10 +63,10 @@ postgres_service_confd_path: ''
 # /etc/profile.d/postgres with correct permissions. Be sure to set appropriate
 # paths for Postgres configuration settings.
 #
-# postgres_service_profile_path: 'host_vars/db.example.com/data/profile.sh'
+# postgres_srv_profile_path: 'host_vars/db.example.com/data/profile.sh'
 #
 # Default: '' (auto generate profile).
-postgres_service_profile_path: ''
+postgres_srv_profile_path: ''
 
 # Postgres startup configuration.
 #
@@ -59,7 +78,7 @@ postgres_service_profile_path: ''
 #   disabled: Refuse to start cluster.
 #
 # Default: 'auto'.
-postgres_service_startup: 'auto'
+postgres_srv_startup: 'auto'
 
 # Purge postgres data on package removal?
 #
@@ -67,14 +86,14 @@ postgres_service_startup: 'auto'
 # state on package removal via debconf postgresql-{VERSION}/postrm_purge_data.
 #
 # Default: True (Debian default).
-postgres_service_purge_enable: true
+postgres_srv_purge_enable: true
 
 # Enable auto upgrades via APT package updates?
 #
 # Applied via debconf postgresql/auto_upgrade.
 #
 # Default: False (Debian default).
-postgres_service_auto_upgrade_enable: false
+postgres_srv_auto_upgrade_enable: false
 
 ###############################################################################
 # Postgres User
@@ -82,32 +101,47 @@ postgres_service_auto_upgrade_enable: false
 
 # User that Postgres will run under.
 #
-# Enable postgres_create_user if this account is not externally managed.
+# Enable postgres_srv_create_user if this account is not externally managed.
 #
 # Default: 'postgres'.
-postgres_user: 'postgres'
+postgres_srv_user: 'postgres'
 
 # Group that Postgres will run under.
 #
-# Enable postgres_create_user if this group is not externally managed.
+# Enable postgres_srv_create_user if this group is not externally managed.
 #
 # Default: 'postgres'.
-postgres_group: 'postgres'
+postgres_srv_group: 'postgres'
 
-# Create postgres_user, postgres_group if not detected?
+# Create postgres_srv_user, postgres_srv_group if not detected?
 #
 # Applied via r_pufky.deb.users, see vars/main.yml for default user attributes.
 #
 # Default: True.
-postgres_create_user: true
+postgres_srv_create_user: true
 
-# Role connection options for postgres_user.
+# Enable user management of data/media files?
 #
-# Postgres is managed through the postgres_user using the specified options. By
-# default, postgres_user is configured to connect via unix socket connections.
+# Use nzbget_srv_user to execute data/media management commands. Role
+# applies media permissions using 'root' by default. For mounted data locations
+# (NFS with squashed mounts, mapped container mounts, etc) the local root user
+# will not have sufficient privileges to modify these files.
+#
+# TODO(role): confirm dirs.
+# Applies to:
+# * postgres_cfg_data_directory
+# * postgres_cfg_databases_backup_dir
+#
+# Default: False.
+postgres_srv_user_data_manage_enable: false
+
+# Role connection options for postgres_srv_user.
+#
+# Postgres is managed through the postgres_srv_user using the specified options. By
+# default, postgres_srv_user is configured to connect via unix socket connections.
 # These are also used for backups.
 #
-# postgres_user_connection:
+# postgres_srv_user_connection:
 #     dict - DB user definitions from community.postgres.postgresql_user.
 #   ca_cert: str - Path to Certificate Authority (CA) certificate. This
 #           option must specify the same certificate as used by server.
@@ -156,10 +190,10 @@ postgres_create_user: true
 #       Reference:
 #       * https://www.postgresql.org/docs/current/static/libpq-ssl.html
 #
-# postgres_user_connection:
+# postgres_srv_user_connection:
 #   login_host: 'localhost'
 #   login_unix_socket: '{{ postgres_config.unix_socket_directories[0] }}'
-#   login_user: '{{ postgres_user }}'
+#   login_user: '{{ postgres_srv_user }}'
 #   port: '{{ postgres_config.port }}'
 #
 # Default: [].
@@ -167,8 +201,8 @@ postgres_create_user: true
 # Reference:
 # * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_user_module.html
 # * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_privs_module.html
-postgres_user_connection:
+postgres_srv_user_connection:
   login_host: 'localhost'
   login_unix_socket: '{{ postgres_config.unix_socket_directories[0] }}'
-  login_user: '{{ postgres_user }}'
+  login_user: '{{ postgres_srv_user }}'
   port: '{{ postgres_config.port }}'

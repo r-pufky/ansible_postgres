@@ -1,9 +1,9 @@
 ---
-- name: 'Auto backup | prepare'
+- name: 'Prepare'
   hosts: 'all'
   gather_facts: false
   tasks:
-    - name: 'Auto backup | prepare | create backup directory'
+    - name: 'Prepare | create backup directory'
       ansible.builtin.file:
         path: '/var/lib/postgres_backup'
         owner: 300
@@ -11,7 +11,7 @@
         mode: '0755'
         state: 'directory'
 
-    - name: 'Auto backup | prepare | set auto backup'
+    - name: 'Prepare | set auto backup'
       ansible.builtin.copy:
         src: '{{
             lookup("env", "MOLECULE_PROJECT_DIRECTORY") ~
@@ -22,7 +22,7 @@
         group: 300
         mode: '0640'
 
-    - name: 'Auto backup | prepare | link latest'
+    - name: 'Prepare | link latest'
       ansible.builtin.file:
         src: '/var/lib/postgres_backup/skeleton.sql'
         path: '/var/lib/postgres_backup/skeleton-latest.sql'

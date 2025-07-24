@@ -1,12 +1,3 @@
-# PostgreSQL Client Authentication Configuration File
-
-{% for auth in _postgres_hba_config %}
-{% if auth.comment | length > 0 %}
-# {{ auth.comment }}
-{% endif %}
-{{ auth.type }} {{ auth.database }} {{ auth.user }} {{ auth.address | default('') }} {{ auth.method }}{% for key, value in auth.options.items() %} {{ key }}={{ value }}{% endfor %}
-
-{% endfor %}
 {#
 pg_hba.conf includes are processed differently from postgresql.conf; and
 require NO quoting. See #18856.
@@ -14,18 +5,22 @@ require NO quoting. See #18856.
 Reference:
 * https://www.postgresql.org/message-id/18856-378db632176b54e5%40postgresql.org
 #}
-{% if postgres_hba_include_dir | length > 0 %}
-{% for dir in postgres_hba_include_dir %}
-include_dir {{ dir }}
+# PostgreSQL Client Authentication Configuration File
+
+{% for section in _postgres_map | selectattr('value.section', '==', 'pg_hba.conf') | sort(attribute='value.order') %}
+{%   if section.value.key in ['include_dir', 'include_if_exists', 'include'] %}
+{%     if section.value.raw | length > 0 %}
+{%       for dir in section.value.raw %}
+{{ section.value.key }} {{ dir }}
+{%       endfor %}
+{%     endif %}
+{%   elif section.value.key == 'hba' %}
+{%     for auth in section.value.parsed %}
+{%       if auth.comment | length > 0 %}
+# {{ auth.comment }}
+{%       endif %}
+{{ auth.type }} {{ auth.database }} {{ auth.user }} {{ auth.address | default('') }} {{ auth.method }}{% for key, value in auth.options.items() %} {{ key }}={{ value }}{% endfor %}
+
+{%     endfor %}
+{%   endif %}
 {% endfor %}
-{% endif %}
-{% if postgres_hba_include_if_exists | length > 0 %}
-{% for dir in postgres_hba_include_if_exists %}
-include_if_exists {{ dir }}
-{% endfor %}
-{% endif %}
-{% if postgres_hba_include | length > 0 %}
-{% for dir in postgres_hba_include %}
-include {{ dir }}
-{% endfor %}
-{% endif %}

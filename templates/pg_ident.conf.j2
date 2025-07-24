@@ -1,31 +1,25 @@
-# PostgreSQL User Name Maps
-
-{% for ident in postgres_ident_config %}
-{% if ident.comment | length > 0 %}
-# {{ ident.comment }}
-{% endif %}
-{{ ident.map_name }} {{ ident.system_username }} {{ ident.pg_username }}
-
-{% endfor %}
 {#
-pg_ident.conf includes are processed differently from postgresql.conf; and
+pg_hba.conf includes are processed differently from postgresql.conf; and
 require NO quoting. See #18856.
 
 Reference:
 * https://www.postgresql.org/message-id/18856-378db632176b54e5%40postgresql.org
 #}
-{% if postgres_ident_include_dir | length > 0 %}
-{% for dir in postgres_ident_include_dir %}
-include_dir {{ dir }}
+# PostgreSQL User Name Maps
+
+{% for section in _postgres_map | selectattr('value.section', '==', 'pg_ident.conf') | sort(attribute='value.order') %}
+{%   if section.value.key in ['include_dir', 'include_if_exists', 'include'] %}
+{%     if section.value.raw | length > 0 %}
+{%       for dir in section.value.raw %}
+{{ section.value.key }} {{ dir }}
+{%       endfor %}
+{%     endif %}
+{%   elif section.value.key == 'ident' %}
+{%     for ident in section.value.raw %}
+{%       if ident.comment | length > 0 %}
+# {{ ident.comment }}
+{%       endif %}
+{{ ident.map_name }} {{ ident.system_username }} {{ ident.pg_username }}
+{%     endfor %}
+{%   endif %}
 {% endfor %}
-{% endif %}
-{% if postgres_ident_include_if_exists | length > 0 %}
-{% for dir in postgres_ident_include_if_exists %}
-include_if_exists {{ dir }}
-{% endfor %}
-{% endif %}
-{% if postgres_ident_include | length > 0 %}
-{% for dir in postgres_ident_include %}
-include {{ dir }}
-{% endfor %}
-{% endif %}

@@ -5,11 +5,11 @@
 
 # Environment variables for postgres processes.
 #
-# postgres_environment_config:
+# postgres_cfg_environment:
 #     dict - Environment configuration.
 #   {KEY}: {VALUE} - Environment option.
 #
-# postgres_environment_config:
+# postgres_cfg_environment:
 #   VARIABLE: 'simple_value'
 #   VARIABLE: 'any value!'
 #
@@ -17,4 +17,4 @@
 #
 # Reference:
 # * https://www.postgresql.org/docs/17/libpq-envars.html
-postgres_environment_config: {}
+postgres_cfg_environment: {}

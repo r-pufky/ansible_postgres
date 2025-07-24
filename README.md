@@ -4,6 +4,8 @@ Manage Postgres databases.
 ## Requirements
 [supported platforms](https://github.com/r-pufky/ansible_postgres/blob/main/meta/main.yml)
 
+`psycopg2` is required on ansible controller for community.postgresql.
+
 ## Role Variables
 [defaults](https://github.com/r-pufky/ansible_postgres/tree/main/defaults/main)
 
@@ -23,8 +25,8 @@ Postgres may be managed by applying the Role separately for each version.
 ### Setup Postgres, create user, create database, enable backups.
 host_vars/db.example.com/vars/postgres.yml
 ``` yaml
-postgres_databases_backups_enable: true
-postgres_users:
+postgres_cfg_databases_backups_enable: true
+postgres_cfg_users:
   - name: 'example'
     host: 'localhost'
     password: '{{ vault_db_test_password }}'
@@ -39,7 +41,7 @@ postgres_users:
         - login_db: 'some_app'
           privs: 'ALL'
           type: 'database'
-postgres_databases:
+postgres_cfg_databases:
   - name: 'some_app'
     owner: 'example'
     extensions:
@@ -63,8 +65,8 @@ every role application.
 
 host_vars/db.example.com/vars/postgres.yml
 ``` yaml
-postgres_databases_backups_enable: true
-postgres_users:
+postgres_cfg_databases_backups_enable: true
+postgres_cfg_users:
   - name: 'example'
     host: 'localhost'
     password: '{{ vault_db_test_password }}'
@@ -74,7 +76,7 @@ postgres_users:
     extensions:
       database_owner:
         - 'some_app'
-postgres_databases:
+postgres_cfg_databases:
   - name: 'some_app'
     owner: 'example'
     extensions:
@@ -107,7 +109,7 @@ postgres_config:
   some_deprecated_option: 'some value'
   some_new_option: 'some value'
   ...
-postgres_users:
+postgres_cfg_users:
   - name: 'example'
     host: 'localhost'
     password: '{{ vault_db_test_password }}'
@@ -122,7 +124,7 @@ postgres_users:
         - login_db: 'some_app'
           privs: 'ALL'
           type: 'database'
-postgres_databases:
+postgres_cfg_databases:
   - name: 'some_app'
     owner: 'example'
     extensions:

@@ -2,9 +2,25 @@
 ###############################################################################
 # Postgres Role Options
 ###############################################################################
+#
+# Updates:
+# * New MAJOR, MINOR releases should hard branch at version before starting
+#   (e.g. 3.0.x branch).
+# * Debian OS version is irrelevant (tied to APT package version).
+# * Keep a separate change log as changes are made, you will not remember all
+#   of them.
+# * Use debian docs to validate package/process changes. Reference source docs
+#   if needed.
+# * Update role defaults (includes updating defaults, tasks):
+#   * Use configuration docs to add new variables.
+#   * Use defaults/ to remove any changed/deprecated variables.
+# * Update tests for any changes.
+# * Standard role validation testing (yamllint, ansible-lint, todo, noqa).
+# * Tag with MAJOR.MINOR.PATCH[ROLE] version, with PATCH representing role
+#   change - e.g. Postgres: 17.x -> Role: 17.0.1  (1 role release).
 
 # Last time Postgres options were validated against a default configuration.
-postgres_role_validate_date: '2025-03-14'
+postgres_role_validate_date: '2025-07-22'
 postgres_role_validate_release: 'bookworm'
 postgres_role_validate_version: '17'
 
@@ -19,7 +35,7 @@ postgres_role_prep_packages:
   - 'locales'  # community.general.locale_gen.
 
 postgres_role_packages:
-  - 'postgresql-{{ postgres_service_version }}'
+  - 'postgresql-{{ postgres_srv_version }}'
   - 'libpq-dev'  # community.postgresql.
   - 'python3-psycopg2'  # community.postgresql.
   - 'xz-utils'  # tar.xz backups.

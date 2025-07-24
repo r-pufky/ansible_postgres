@@ -13,7 +13,7 @@
     ca_cert: '{{
         (user.ca_cert
          if user.ca_cert is defined else
-         postgres_user_connection.ca_cert) |
+         _postgres_srv_user_connection.raw.ca_cert) |
         default(omit)
       }}'
     comment: '{{ user.comment | default(omit) }}'
@@ -22,7 +22,7 @@
     connect_params: '{{
         (user.connect_params
          if user.connect_params is defined else
-         postgres_user_connection.connect_params) |
+         _postgres_srv_user_connection.raw.connect_params) |
         default({})
       }}'
     login_db: '{{ user.login_db | default("") }}'
@@ -32,25 +32,25 @@
     login_host: '{{
         (user.login_host
          if user.login_host is defined else
-         postgres_user_connection.login_host) |
+         _postgres_srv_user_connection.raw.login_host) |
         default("localhost")
       }}'
     login_password: '{{
         (user.login_password
          if user.login_password is defined else
-         postgres_user_connection.login_password) |
+         _postgres_srv_user_connection.raw.login_password) |
         default(omit)
       }}'
     login_unix_socket: '{{
         (user.login_unix_socket
          if user.login_unix_socket is defined else
-         postgres_user_connection.login_unix_socket) |
-        default(postgres_config.unix_socket_directories[0])
+         _postgres_srv_user_connection.raw.login_unix_socket) |
+        default(_postgres_cfg_unix_socket_directories.raw[0])
       }}'
     login_user: '{{
         (user.login_user
          if user.login_user is defined else
-         postgres_user_connection.login_user) |
+         _postgres_srv_user_connection.raw.login_user) |
         default("postgres")
       }}'
     name: '{{ user.name }}'
@@ -59,8 +59,8 @@
     port: '{{
         (user.port
          if user.port is defined else
-         postgres_user_connection.port) |
-        default(postgres_config.port)
+         _postgres_srv_user_connection.raw.port) |
+        default(_postgres_cfg_port.raw)
       }}'
     reset_unspecified_configuration:
       '{{ user.reset_unspecified_configuration | default(false) }}'
@@ -68,46 +68,46 @@
     session_role: '{{
         (user.session_role
          if user.session_role is defined else
-         postgres_user_connection.session_role) |
+         _postgres_srv_user_connection.raw.session_role) |
         default(omit)
       }}'
     ssl_cert: '{{
         (user.ssl_cert
          if user.ssl_cert is defined else
-         postgres_user_connection.ssl_cert) |
+         _postgres_srv_user_connection.raw.ssl_cert) |
         default(omit)
       }}'
     ssl_key: '{{
         (user.ssl_key
          if user.ssl_key is defined else
-         postgres_user_connection.ssl_key) |
+         _postgres_srv_user_connection.raw.ssl_key) |
         default(omit)
       }}'
     ssl_mode: '{{
         (user.ssl_mode
          if user.ssl_mode is defined else
-         postgres_user_connection.ssl_mode) |
+         _postgres_srv_user_connection.raw.ssl_mode) |
         default("prefer")
       }}'
     state: '{{ user.state | default("present") }}'
     trust_input: '{{ user.trust_input | default(true) }}'
   become: true
-  become_user: '{{ postgres_user }}'
-  loop: '{{ postgres_users }}'
+  become_user: '{{ _postgres_srv_user.raw }}'
+  loop: '{{ _postgres_cfg_users.raw }}'
   loop_control:
     loop_var: 'user'
     label: '{{ user.name }}'
 
 - name: 'Manage | DB'
   ansible.builtin.include_tasks: 'manage_db.yml'
-  loop: '{{ postgres_databases }}'
+  loop: '{{ _postgres_cfg_databases.raw }}'
   loop_control:
     loop_var: 'db'
     label: '{{ db.name }}'
 
 - name: 'Manage | users | extensions'
   ansible.builtin.include_tasks: 'extensions.yml'
-  loop: '{{ postgres_users }}'
+  loop: '{{ _postgres_cfg_users.raw }}'
   loop_control:
     loop_var: 'user'
     label: '{{ user.name }}'

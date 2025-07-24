@@ -15,28 +15,28 @@
 #      the name lose its special character, and just match a database or
 #      username with that name.
 #
-# postgres_ident_config:
-#     dict - User identity mapping configuration.
-#   comment: str - Configuration comment.
-#   map_name: str - 'map={NAME}' used in pg_hba.conf OPTIONS.
-#   system_username: str - Client username.
-#       Special Case:
-#         /{REGEX}: Regular expression name match (starts with /). This can
-#                   contain a capture (a parenthesized sub expression).  The
-#                   substring matching the capture will be substituted for \1
-#                   (backslash-one) if present in PG-USERNAME.
-#   pg_username: str - Postgres username.
-#       Values:
-#              all: Match all Users/Groups.
-#           {USER}: Username to match.
-#         +{GROUP}: Group to match (starts with +).
-#         /{REGEX}: Regular expression name match (starts with /).
+# postgres_cfg_ident:
+#     list of dict - User identity mapping configuration.
+#   - comment: str - Configuration comment.
+#     map_name: str - 'map={NAME}' used in pg_hba.conf OPTIONS.
+#     system_username: str - Client username.
+#         Special Case:
+#           /{REGEX}: Regular expression name match (starts with /). This can
+#                     contain a capture (a parenthesized sub expression).  The
+#                     substring matching the capture will be substituted for \1
+#                     (backslash-one) if present in PG-USERNAME.
+#     pg_username: str - Postgres username.
+#         Values:
+#                all: Match all Users/Groups.
+#             {USER}: Username to match.
+#           +{GROUP}: Group to match (starts with +).
+#           /{REGEX}: Regular expression name match (starts with /).
 #
 # Default: [].
 #
 # Reference:
 # * https://www.postgresql.org/docs/17/auth-username-maps.html
-postgres_ident_config: []
+postgres_cfg_ident: []
 
 ###############################################################################
 # Ident File Includes
@@ -64,7 +64,7 @@ postgres_ident_config: []
 #   {QUOTE}: Provide quoting if necessary.
 #
 # Default: [].
-postgres_ident_include_dir: []
+postgres_cfg_ident_include_dir: []
 
 # List of files to include if they exist.
 #
@@ -80,7 +80,7 @@ postgres_ident_include_dir: []
 #   {QUOTE}: Provide quoting if necessary.
 #
 # Default: [].
-postgres_ident_include_if_exists: []
+postgres_cfg_ident_include_if_exists: []
 
 # List of files to include.
 #
@@ -95,4 +95,4 @@ postgres_ident_include_if_exists: []
 #   {QUOTE}: Provide quoting if necessary.
 #
 # Default: [].
-postgres_ident_include: []
+postgres_cfg_ident_include: []

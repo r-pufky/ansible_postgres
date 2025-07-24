@@ -6,15 +6,15 @@
 
 # Database users to manage.
 #
-# Users are managed using connection options from postgres_user_connection;
+# Users are managed using connection options from postgres_srv_user_connection;
 # unless explicitly overridden.
 #
-# postgres_users:
+# postgres_cfg_users:
 #     list of dict - DB user definitions from
 #                    community.postgres.postgresql_user.
 #   - ca_cert: str - Path to Certificate Authority (CA) certificate. This
 #           option must specify the same certificate as used by server.
-#         Default: postgres_user_connection.ca_cert or omit.
+#         Default: postgres_srv_user_connection.ca_cert or omit.
 #     comment: str - user comment (equivalent to COMMENT ON ROLE statement).
 #         Special Case:
 #           '': Reset comment.
@@ -32,7 +32,7 @@
 #     connect_params: dict - Additional parameters to be passed to libpg.
 #           There parameters take precedence.
 #       {KEY}: {VALUE} - Configuration parameter.
-#           Default: postgres_user_connection.connect_params or {}.
+#           Default: postgres_srv_user_connection.connect_params or {}.
 #     login_db: str - Database to connect to and where user permissions are
 #           granted.
 #         Default: ''.
@@ -48,14 +48,14 @@
 #     login_host: str - Host running the database.
 #         Special Case:
 #           *: local connection may require '127.0.0.1' instead of 'localhost'.
-#         Default: postgres_user_connection.login_host or 'localhost'.
+#         Default: postgres_srv_user_connection.login_host or 'localhost'.
 #     login_password: str - Password used to authenticate with.
-#         Default: postgres_user_connection.login_password or omit.
+#         Default: postgres_srv_user_connection.login_password or omit.
 #     login_unix_socket: str - Unix domain socket path for local connections.
-#         Default: postgres_user_connection.login_unix_socket or
+#         Default: postgres_srv_user_connection.login_unix_socket or
 #                  postgres_config.unix_socket_directories[0].
 #     login_user: str - Username module uses to establish PostgreSQL session.
-#         Default: postgres_user_connection.login_user or 'postgres'.
+#         Default: postgres_srv_user_connection.login_user or 'postgres'.
 #     name: str - Name of the user (role) to add or remove.
 #     no_password_changes: bool - Do NOT inspect database for password changes?
 #           If the user already exists, skips all password related checks.
@@ -72,7 +72,7 @@
 #             {MD5}: MD5 hashed passwords are stored as-is.
 #         Default: omit.
 #     port: int - Database port to connect to.
-#         Default: postgres_user_connection.port or postgres_config.port.
+#         Default: postgres_srv_user_connection.port or postgres_config.port.
 #     reset_unspecified_configuration: bool - Reset user default configuration
 #           parameters if not included in configuration?
 #         Default: False.
@@ -87,11 +87,11 @@
 #           login_user is a member of. Permissions checking for SQL commands is
 #           carried out as though the session role were the one that had logged
 #           in originally.
-#         Default: postgres_user_connection.session_role or omit.
+#         Default: postgres_srv_user_connection.session_role or omit.
 #     ssl_cert: str - Location of the client SSL certificate.
-#         Default: postgres_user_connection.ssl_cert or omit.
+#         Default: postgres_srv_user_connection.ssl_cert or omit.
 #     ssl_key: str - Location of secret key used for the client certificate.
-#         Default: postgres_user_connection.ssl_key or omit.
+#         Default: postgres_srv_user_connection.ssl_key or omit.
 #     ssl_mode: str- SSL service negotiation mode.
 #         Values:
 #                 allow: Allow SSL if provided.
@@ -105,7 +105,7 @@
 #           verify-full: Require SSL with Full chain VA verification. libpq
 #                        will also verify that the server host name matches the
 #                        name stored in the server certificate.
-#         Default: postgres_user_connection.ssl_mode or 'prefer' (default).
+#         Default: postgres_srv_user_connection.ssl_mode or 'prefer' (default).
 #
 #         Reference:
 #         * https://www.postgresql.org/docs/current/static/libpq-ssl.html
@@ -261,7 +261,7 @@
 #                            parameter: parameter database object.
 #               Default: 'table'.
 #
-# postgres_users:
+# postgres_cfg_users:
 #   - name: 'example'
 #     host: 'localhost'
 #     password: 'example'
@@ -286,4 +286,4 @@
 # * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_user_module.html
 # * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_owner_module.html
 # * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_privs_module.html
-postgres_users: []
+postgres_cfg_users: []

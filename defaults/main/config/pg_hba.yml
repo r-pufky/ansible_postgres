@@ -13,91 +13,91 @@
 #      the name lose its special character, and just match a database or
 #      username with that name.
 #
-# postgres_hba_config:
-#     dict - Host based authentication configuration.
-#   comment: str - Configuration comment.
-#   type: str - Connection type.
-#       Values:
-#                local: Unix-domain socket.
-#                 host: TCP/IP socket (encrypted or not).
-#              hostssl: TCP/IP socket that is SSL-encrypted.
-#            hostnossl: TCP/IP socket that is not SSL-encrypted.
-#           hostgssenc: TCP/IP socket that is GSSAPI-encrypted.
-#         hostnogssenc: TCP/IP socket that is not GSSAPI-encrypted.
-#       Default: 'local'.
-#   database: str - Database names to match to this record.
-#       Special Case:
-#         {MATCH},{MATCH}: Multiple selectors may be used if separated with a
-#                          comma.
-#                @{MATCH}: Prefix with @ to include names from a separate file.
-#       Values:
-#                 all: Match all databases.
-#            sameuser: Database has the same name as the requested user.
-#            samerole: User must be a member of the role with the same name as
-#                      the requested database.
-#         replication: Matches physical replication connection, it does not
-#                      match with logical replication connections.
-#                {DB}: Database name.
-#            /{REGEX}: Regular expression name match (starts with /).
-#       Default: 'all'.
-#   user: str - User or Group to match.
-#       Special Case:
-#         {MATCH},{MATCH}: Multiple selectors may be used if separated with a
-#                          comma.
-#                @{MATCH}: Prefix with @ to include names from a separate file.
-#       Values:
-#              all: Match all Users/Groups.
-#           {USER}: Username to match.
-#         +{GROUP}: Group to match (starts with +).
-#         /{REGEX}: Regular expression name match (starts with /).
-#       Default: 'all'.
-#   address: str - Address to accept connections on.
-#       Special Case:
-#         local: Local connections do NOT specify address.
-#       Values:
-#           {HOST}: Hostname.
-#          .{HOST}: Match suffix of actual hostname.
-#           {CIDR}: CIDR address (IPv4/IPv6).
-#           {CIDR}: CIDR address.
-#         samehost: Match any of the server's IP addresses.
-#          samenat: Match any subnet server is directly connected to.
-#       Default: omit.
-#   method: str - Authentication method.
-#       Values:
-#                 trust: Allow the connection unconditionally.
-#                reject: Reject the connection unconditionally.
-#                   md5: Perform SCRAM-SHA-256 or MD5 authentication to verify
-#                        the user's password.
-#              password: Require the client to supply an unencrypted password
-#                        for authentication (sent in clear text); prefer
-#                        scram-sha-256.eeeeee
-#         scram-sha-256: Perform SCRAM-SHA-256 authentication to verify user
-#                        password.
-#                   gss: Use GSSAPI to authenticate the user (TCP/IP only).
-#                  sspi: Use SSPI to authenticate the user (Windows only).
-#                 ident: Obtain the operating system user name of the client by
-#                        contacting the ident server on the client and check if
-#                        it matches the requested database user name (TCP/IP
-#                        only).
-#                  peer: Obtain the client's operating system user name from
-#                        the operating system and check if it matches the
-#                        requested database user name (local only).
-#                   pam: Authenticate using the Pluggable Authentication
-#                        Modules (PAM) service provided by the operating
-#                        system.
-#                  ldap: Authenticate using an LDAP server.
-#                radius: Authenticate using a RADIUS server.
-#                  cert: Authenticate using SSL client certificates.
-#       Default: 'trust'.
-#   options: dict - Authentication options based on mechanism.
-#     {KEY}: {VALUE} - Authentication Option.
+# postgres_cfg_hba:
+#     list of dict - Host based authentication configuration.
+#   - comment: str - Configuration comment.
+#     type: str - Connection type.
+#         Values:
+#                  local: Unix-domain socket.
+#                   host: TCP/IP socket (encrypted or not).
+#                hostssl: TCP/IP socket that is SSL-encrypted.
+#              hostnossl: TCP/IP socket that is not SSL-encrypted.
+#             hostgssenc: TCP/IP socket that is GSSAPI-encrypted.
+#           hostnogssenc: TCP/IP socket that is not GSSAPI-encrypted.
+#         Default: 'local'.
+#     database: str - Database names to match to this record.
+#         Special Case:
+#           {MATCH},{MATCH}: Multiple selectors may be used if separated with a
+#                            comma.
+#                  @{MATCH}: Prefix with @ to include names from separate file.
+#         Values:
+#                   all: Match all databases.
+#              sameuser: Database has the same name as the requested user.
+#              samerole: User must be a member of the role with the same name
+#                        as the requested database.
+#           replication: Matches physical replication connection, it does not
+#                        match with logical replication connections.
+#                  {DB}: Database name.
+#              /{REGEX}: Regular expression name match (starts with /).
+#         Default: 'all'.
+#     user: str - User or Group to match.
+#         Special Case:
+#           {MATCH},{MATCH}: Multiple selectors may be used if separated with a
+#                            comma.
+#                  @{MATCH}: Prefix with @ to include names from separate file.
+#         Values:
+#                all: Match all Users/Groups.
+#             {USER}: Username to match.
+#           +{GROUP}: Group to match (starts with +).
+#           /{REGEX}: Regular expression name match (starts with /).
+#         Default: 'all'.
+#     address: str - Address to accept connections on.
+#         Special Case:
+#           local: Local connections do NOT specify address.
+#         Values:
+#             {HOST}: Hostname.
+#            .{HOST}: Match suffix of actual hostname.
+#             {CIDR}: CIDR address (IPv4/IPv6).
+#             {CIDR}: CIDR address.
+#           samehost: Match any of the server's IP addresses.
+#            samenat: Match any subnet server is directly connected to.
+#         Default: omit.
+#     method: str - Authentication method.
+#         Values:
+#                   trust: Allow the connection unconditionally.
+#                  reject: Reject the connection unconditionally.
+#                     md5: Perform SCRAM-SHA-256 or MD5 authentication to
+#                          verify /the user's password.
+#                password: Require the client to supply an unencrypted password
+#                          for authentication (sent in clear text); prefer
+#                          scram-sha-256.eeeeee
+#           scram-sha-256: Perform SCRAM-SHA-256 authentication to verify user
+#                          password.
+#                     gss: Use GSSAPI to authenticate the user (TCP/IP only).
+#                    sspi: Use SSPI to authenticate the user (Windows only).
+#                   ident: Obtain the operating system user name of the client
+#                          by contacting the ident server on the client and
+#                          check if it matches the requested database user name
+#                          (TCP/IP only).
+#                    peer: Obtain the client's operating system user name from
+#                          the operating system and check if it matches the
+#                          requested database user name (local only).
+#                     pam: Authenticate using the Pluggable Authentication
+#                          Modules (PAM) service provided by the operating
+#                          system.
+#                    ldap: Authenticate using an LDAP server.
+#                  radius: Authenticate using a RADIUS server.
+#                    cert: Authenticate using SSL client certificates.
+#         Default: 'trust'.
+#     options: dict - Authentication options based on mechanism.
+#       {KEY}: {VALUE} - Authentication Option.
 #
 #
 # Default: (same as default install).
 #
 # Reference:
 # * https://www.postgresql.org/docs/current/auth-pg-hba-conf.html
-postgres_hba_config:
+postgres_cfg_hba:
   - comment: 'Database administrative login by Unix domain socket'
     type: 'local'
     database: 'all'
@@ -120,7 +120,7 @@ postgres_hba_config:
     user: 'all'
     address: '::1/128'
     method: 'scram-sha-256'
-  - comment: >
+  - comment: >-
       Allow replication connections from localhost, by a user with the
       replication privilege.
     type: 'local'
@@ -163,7 +163,7 @@ postgres_hba_config:
 #           letters, and uppercase before lowercase.
 #
 # Default: [].
-postgres_hba_include_dir: []
+postgres_cfg_hba_include_dir: []
 
 # List of files to include if they exist.
 #
@@ -177,7 +177,7 @@ postgres_hba_include_dir: []
 #      taken to be relative to the directory containing the referencing file.
 #
 # Default: [].
-postgres_hba_include_if_exists: []
+postgres_cfg_hba_include_if_exists: []
 
 # List of files to include.
 #
@@ -190,4 +190,4 @@ postgres_hba_include_if_exists: []
 #      taken to be relative to the directory containing the referencing file.
 #
 # Default: [].
-postgres_hba_include: []
+postgres_cfg_hba_include: []

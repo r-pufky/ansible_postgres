@@ -24,7 +24,7 @@ provisioner:
   inventory:
     group_vars:
       all:
-        postgres_users:
+        postgres_cfg_users:
           - name: 'example'
             login_db: 'postgres'
             host: 'localhost'
@@ -35,7 +35,7 @@ provisioner:
             extensions:
               database_owner:
                 - 'skeleton'
-        postgres_databases:
+        postgres_cfg_databases:
           - name: 'skeleton'
             owner: 'example'
             extensions:

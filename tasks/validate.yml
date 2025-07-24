@@ -1,0 +1,20 @@
+---
+###############################################################################
+# Validate
+###############################################################################
+# Start Postgres services and confirm they are active and running. Service
+# already started to update local users/databases.
+#
+# Base service will be enabled but not running. Service is forked and should be
+# running under postgresql@{VERSION}-main.
+
+- name: 'Validate | query service status'
+  ansible.builtin.service_facts:
+
+- name: 'Validate | assert services running'
+  ansible.builtin.assert:
+    quiet: true
+    that: ansible_facts.services[item].state == 'running'
+    fail_msg: '✘ {{ item }} should be running.'
+  loop:
+    - 'postgresql@{{ _postgres_srv_version.raw }}-main.service'

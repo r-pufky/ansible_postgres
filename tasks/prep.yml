@@ -3,56 +3,10 @@
 ###############################################################################
 # Postgres Prep
 ###############################################################################
-# Prep Postgres variables for installation and upgrade.
+# Prep Postgres variables for installation and upgrade. SSL certificates and
+# Locales must be installed to manage locales specified in databases creation.
 #
-# Default service does not log configuration errors on startup. This must be
-# done manually to see what configuration issues are occurring. With a default
-# installation location, run:
-#
-#   su - postgres
-#   /usr/lib/postgresql/17/bin/postgres -d 3 \
-#   -D /var/lib/postgresql/17/main \
-#   -c config_file=/etc/postgresql/17/main/postgresql.conf
-#
-# Generates:
-#   _postgres_etc_dir: str - path to versioned postgres install.
-#   _postgres_scripts: str - path to versioned custom scripts.
-#   _postgres_bin: str - path to postgres versioned binary utilities.
-#   _postgres_start_config: dict - sanitized start configuration.
-#   _postgres_hba: list of dict - sanitized HBA configuration.
-
-- name: 'Prep | sanitize paths and locales'
-  ansible.builtin.set_fact:
-    _postgres_etc_dir: '/etc/postgresql/{{ postgres_service_version }}'
-    _postgres_scripts: '/etc/postgresql/{{ postgres_service_version }}/scripts'
-    _postgres_bin: '/usr/lib/postgresql/{{ postgres_service_version }}/bin'
-    _postgres_lc_collate: '{{
-        postgres_databases | default([]) |
-        map(attribute="lc_collate", default="en_US.UTF-8") | unique
-      }}'
-    _postgres_lc_ctype: '{{
-        postgres_databases | default([]) |
-        map(attribute="lc_ctype", default="en_US.UTF-8") | unique
-      }}'
-    _postgres_lc_messages:
-      '{{ postgres_config.lc_messages | default("en_US.UTF-8") }}'
-    _postgres_lc_monetary:
-      '{{ postgres_config.lc_monetary | default("en_US.UTF-8") }}'
-    _postgres_lc_numeric:
-      '{{ postgres_config.lc_numeric | default("en_US.UTF-8") }}'
-    _postgres_lc_time: '{{ postgres_config.lc_time | default("en_US.UTF-8") }}'
-
-- name: 'Prep | generate locales list'
-  ansible.builtin.set_fact:
-    _postgres_locales: '{{
-        (_postgres_lc_collate +
-         _postgres_lc_ctype +
-         [_postgres_lc_messages] +
-         [_postgres_lc_monetary] +
-         [_postgres_lc_numeric] +
-         [_postgres_lc_time]) |
-        flatten | unique
-      }}'
+# Postgres does not need to be stopped to update configuration, only restarted.
 
 - name: 'Install | pre-requisite packages'
   ansible.builtin.include_role:
@@ -63,59 +17,48 @@
     apt_package_update_cache: true
 
 - name: 'Prep | manage users'
-  when: postgres_create_user
+  when: _postgres_srv_create_user.raw
   ansible.builtin.include_role:
     name: 'r_pufky.deb.users'
     tasks_from: 'role_account_add.yml'
   vars:
-    users_role_group: '{{ postgres_role_group }}'
     users_role_user: '{{ postgres_role_user }}'
+    users_role_group: '{{ postgres_role_group }}'
+
+- name: 'Prep | enumerate system user {{ _postgres_srv_user.raw }}'
+  ansible.builtin.user:
+    name: '{{ _postgres_srv_user.raw }}'
+  check_mode: true
+  changed_when: false
+  register: _postgres_srv_user_query
+
+- name: 'Prep | parse system user UID/GID'
+  ansible.builtin.set_fact:
+    _postgres_srv_user: '{{
+        _postgres_srv_user |
+        combine({"parsed": _postgres_srv_user_query.uid})
+      }}'
+    _postgres_srv_group: '{{
+        _postgres_srv_group |
+        combine({"parsed": _postgres_srv_user_query.group})
+      }}'
 
 - name: 'Prep | set debconf postrm_purge_data'
   ansible.builtin.debconf:
-    name: 'postgresql-{{ postgres_service_version }}'
-    question: 'postgresql-{{ postgres_service_version }}/postrm_purge_data'
+    name: '{{ "postgresql-" ~ _postgres_srv_version.raw }}'
+    question: '{{ _postgres_srv_purge_enable.role }}'
     vtype: 'boolean'
-    value:
-      '{{ postgres_service_purge_enable | default(true) | string | lower }}'
+    value: '{{ _postgres_srv_purge_enable.parsed }}'
 
 - name: 'Prep | set debconf auto_upgrade'
   ansible.builtin.debconf:
     name: 'postgresql'
-    question: 'postgresql/auto_upgrade'
+    question: '{{ _postgres_srv_auto_upgrade_enable.role }}'
     vtype: 'boolean'
-    value: '{{
-        postgres_service_auto_upgrade_enable | default(false) | string | lower
-      }}'
+    value: '{{ _postgres_srv_auto_upgrade_enable.parsed }}'
 
-# Locales must be generated to be used for database creation.
 - name: 'Prep | configure locales'
   community.general.locale_gen:
     name: '{{ item }}'
     state: 'present'
-  loop: '{{ _postgres_locales }}'
-
-# Postgres will refuse to start with any invalid configuration option, even for
-# options that are deprecated (using a new template for an older version) or
-# options that don't exist yet (using a current template for a new release).
-#
-# Process dictionary and cast variables, specifically handling formatting for
-# any know variables that are needed directly in render template. Otherwise,
-# minimal sanity checking is done.
-#
-# Reference:
-# * https://www.postgresql.org/docs/current/config-setting.html#CONFIG-SETTING-NAMES-VALUES
-- name: 'Prep | build base user preference mapping'
-  ansible.builtin.set_fact:
-    _postgres_start_config: '{{ postgres_service_startup | default("auto") }}'
-
-- name: 'Prep | sanitize postgres_hba_config'
-  when: postgres_hba_config | length > 0
-  ansible.builtin.set_fact:
-    _postgres_hba_config: '{{
-        _postgres_hba_config | default([]) +
-        [postgres_role_template_hba | combine(item)]
-      }}'
-  loop: '{{ postgres_hba_config }}'
-  loop_control:
-    label: '{{ item.type }} {{ item.user }}@{{ item.database }}'
+  loop: '{{ _postgres.locales }}'

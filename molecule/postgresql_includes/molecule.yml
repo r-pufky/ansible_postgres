@@ -27,7 +27,7 @@ provisioner:
   inventory:
     group_vars:
       all:
-        postgres_hba_config:
+        postgres_cfg_hba:
           - comment: 'unauthenticated local login for testing'
             type: 'local'
             database: 'all'
@@ -43,16 +43,16 @@ provisioner:
             database: 'all'
             user: 'all'
             method: 'trust'
-        postgres_service_confd_path: '{{
+        postgres_srv_confd_path: '{{
             lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
             "/files/conf.d"
           }}'
-        postgres_config_include_dir:
+        postgres_cfg_include_dir:
           - 'conf.d'
-        postgres_config_include_if_exists:
+        postgres_cfg_include_if_exists:
           - '/tmp/if_exists.conf'
           - '/tmp/does_not_exist.conf'
-        postgres_config_include:
+        postgres_cfg_include:
           - '/tmp/include.conf'
 platforms:
   - name: 'postgres-debian-12-postgresql_includes'

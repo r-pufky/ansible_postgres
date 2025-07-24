@@ -1,36 +1,10 @@
 ---
-- name: 'Default | verify database'
+- name: 'Verify database'
   hosts: 'all'
   gather_facts: false
   tasks:
-    - name: 'Default | verify database | gather service status'
-      ansible.builtin.service_facts:
-
-    - name: 'Default | verify database | gather service processes'
-      ansible.builtin.shell: 'set -o pipefail && ps aux | grep "postgres"'
-      args:
-        executable: '/bin/bash'
-      changed_when: false
-      register: _test_postgres_processes
-
-    # Will be enabled but not running, forked from @ service for version.
-    - name: 'Default | verify database | assert postgresql@.service enabled'
-      ansible.builtin.assert:
-        quiet: true
-        that:
-          - '"postgresql.service" in ansible_facts.services'
-          - 'ansible_facts["services"]["postgresql.service"]["status"] == "enabled"'  # yamllint disable-line rule:line-length
-        fail_msg: '✘ postgresql.service should be active.'
-
-    - name: 'Default | verify database | assert postgresql@.service running'
-      ansible.builtin.assert:
-        quiet: true
-        that:
-          - _test_postgres_processes.stdout_lines | length > 2
-        fail_msg: '✘ Postgres has not successfully started.'
-
     # community.postgresql.postgresql_user - just check user is created.
-    - name: 'Default | verify database | query user example'
+    - name: 'Verify database | query user example'
       community.postgresql.postgresql_query:
         login_db: 'postgres'
         query: 'select * from pg_catalog.pg_user where usename=%(user)s'
@@ -44,7 +18,7 @@
       become_user: 'postgres'
       register: _test_query
 
-    - name: 'Default | verify database | assert user example created'
+    - name: 'Verify database | assert user example created'
       ansible.builtin.assert:
         quiet: true
         that:
@@ -52,7 +26,7 @@
         fail_msg: '✘ example user does not exist.'
 
     # community.postgresql.postgresql_user - just check DB is created.
-    - name: 'Default | verify database | query DB test1'
+    - name: 'Verify database | query DB test1'
       community.postgresql.postgresql_query:
         login_db: 'postgres'
         query: 'select datname from pg_database where datname=%(db)s'
@@ -66,56 +40,59 @@
       become_user: 'postgres'
       register: _test_query
 
-    - name: 'Default | verify database | assert DB test1 created'
+    - name: 'Verify database | assert DB test1 created'
       ansible.builtin.assert:
         quiet: true
         that:
           - _test_query.rowcount == 1
         fail_msg: '✘ roundcube DB does not exist.'
 
-- name: 'Default | verify config'
+- name: 'Verify config'
   hosts: 'all'
   gather_facts: false
   tasks:
-    - name: 'Default | verify config | /etc/profile.d/postgres'
+    - name: 'Verify config | /etc/profile.d/postgres'
       ansible.builtin.include_role:
         name: 'r_pufky.lib.tests'
         tasks_from: 'copy.yml'
       vars:
-        test_name: 'Default | verify config | /etc/profile.d/postgres'
+        test_name: 'Verify config | /etc/profile.d/postgres'
         test_src: 'files/postgres'
         test_file: '/etc/profile.d/postgres'
         test_owner: 'root'
         test_group: 'root'
         test_mode: '0644'
+        test_diff: true
 
     - name:
-        'Default | verify config | /etc/postgresql/17/scripts/postgres_owner'
+        'Verify config | /etc/postgresql/17/scripts/postgres_owner'
       ansible.builtin.include_role:
         name: 'r_pufky.lib.tests'
         tasks_from: 'copy.yml'
       vars:
         test_name:
-          'Default | verify config | /etc/postgresql/17/scripts/postgres_owner'
+          'Verify config | /etc/postgresql/17/scripts/postgres_owner'
         test_src: 'files/postgres_owner'
         test_file: '/etc/postgresql/17/scripts/postgres_owner'
         test_owner: 'postgres'
         test_group: 'postgres'
         test_mode: '0700'
+        test_diff: true
 
     - name:
-        'Default | verify config | /etc/postgresql/17/main'
+        'Verify config | /etc/postgresql/17/main'
       ansible.builtin.include_role:
         name: 'r_pufky.lib.tests'
         tasks_from: 'copy.yml'
       vars:
         test_name:
-          'Default | verify config | /etc/postgresql/17/main/{{ item.file }}'
+          'Verify config | /etc/postgresql/17/main/{{ item.file }}'
         test_src: 'files/{{ item.file }}'
         test_file: '/etc/postgresql/17/main/{{ item.file }}'
         test_owner: 'postgres'
         test_group: 'postgres'
         test_mode: '{{ item.mode }}'
+        test_diff: true
       loop:
         - {file: 'environment', mode: '0644'}
         - {file: 'postgresql.conf', mode: '0644'}

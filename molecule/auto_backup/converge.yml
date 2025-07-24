@@ -1,18 +1,18 @@
 ---
-- name: 'Auto backup | converge'
+- name: 'Converge'
   hosts: 'all'
   gather_facts: false
   tasks:
-    - name: 'Default | converge | apply r_pufky.srv.postgres'
+    - name: 'Converge | apply r_pufky.srv.postgres'
       ansible.builtin.include_role:
         name: 'r_pufky.srv.postgres'
 
-- name: 'Auto backup | converge | disable auto-backup'
+- name: 'Converge | disable auto-backup'
   hosts: 'postgres-debian-12-auto_backup-disable'
   gather_facts: false
   tasks:
-    - name: 'Auto backup | converge | apply r_pufky.srv.postgres'
+    - name: 'Converge | apply r_pufky.srv.postgres'
       ansible.builtin.include_role:
         name: 'r_pufky.srv.postgres'
       vars:
-        postgres_databases_backup_enable: false
+        postgres_cfg_databases_backup_enable: false

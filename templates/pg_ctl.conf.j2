@@ -2,4 +2,4 @@
 # This configuration file contains cluster specific options to be passed to
 # pg_ctl(1).
 
-pg_ctl_options = '{{ postgres_ctl_config | join(" ") }}'
+pg_ctl_options = '{{ _postgres_cfg_ctl.parsed }}'

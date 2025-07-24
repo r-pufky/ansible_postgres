@@ -1,0 +1,15 @@
+---
+- name: 'Prepare'
+  hosts: 'postgres-debian-12-user_data'
+  gather_facts: false
+  tasks:
+    - name: 'Prepare | simulate user media restriction'
+      ansible.builtin.file:
+        path: '{{ item }}'
+        owner: 300
+        group: 300
+        mode: '0755'
+        state: 'directory'
+      loop:
+        - '/var/lib/postgresql/17/main'
+        - '/var/lib/postgres_backup'

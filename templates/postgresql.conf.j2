@@ -5,43 +5,47 @@
 #
 # Process dictionary and cast variables, specifically handling formatting for
 # any know variables that are needed.
+#
+# Jinja2 wart: | int returns 0 if it cannot be cast which is potentially a
+#              valid option for multi-type: explicitly return and test 'str'.
+# Jinja2 wart: Testing if a bool converted is interpreted as boolean, which
+#              fails testing for multi-type: statically compare boolean strings
+#              for correct bool test.
+#
+# postgresql.conf includes are processed differently from pg_*.conf; and
+# require quoting. See #18856.
+#
+# Reference:
+# * https://www.postgresql.org/message-id/18856-378db632176b54e5%40postgresql.org
 #}
-{% for key, value in postgres_config.items() %}
-{% if value is boolean %}
-{{ key }}={{ value | lower }}
-{# Lists require custom processing. Default to comma separated. #}
-{% elif value is iterable and (value is not string and value is not mapping) %}
-{% if key == 'ssl_ciphers' or key == 'dynamic_library_path' %}
-{{ key }}='{{ value | join(":")}}'
-{% else %}
-{{ key }}='{{ value | join(",")}}'
-{% endif %}
-{% elif value is number %}
-{{ key }}={{ value }}
-{% else %}
-{{ key }}='{{ value }}'
-{% endif %}
+{% for header in _postgres_order %}
+{%   for section in _postgres_map | selectattr('value.section', '==', header) | sort(attribute='value.order') %}
+{%     if section.value.key in ['include_dir', 'include_if_exists', 'include'] %}
+{%       if section.value.raw | length > 0%}
+{%         for dir in section.value.raw %}
+{{ section.value.key }} '{{ dir }}'
+{%         endfor %}
+{%       endif %}
+{%     elif section.value.hint == 'list of str' %}
+{{ section.value.key }}='{{ section.value.parsed }}'
+{%     elif section.value.hint in ['int', 'float'] %}
+{{ section.value.key }}={{ section.value.raw }}
+{%     elif section.value.hint == 'bool' %}
+{{ section.value.key }}={{ section.value.raw | lower }}
+{%     elif section.value.hint == 'str or int' %}
+{%       if section.value.raw | int('str') == 'str' %}
+{{ section.value.key }}='{{ section.value.raw }}'
+{%       else %}
+{{ section.value.key }}={{ section.value.raw }}
+{%       endif %}
+{%     elif section.value.hint == 'str or bool' %}
+{%       if section.value.raw | lower in ['true', 'false'] %}
+{{ section.value.key }}={{ section.value.raw | lower }}
+{%       else %}
+{{ section.value.key }}='{{ section.value.raw }}'
+{%       endif %}
+{%     else %}
+{{ section.value.key }}='{{ section.value.raw }}'
+{%     endif %}
+{%   endfor %}
 {% endfor %}
-
-{#
-postgresql.conf includes are processed differently from pg_*.conf; and require
-quoting. See #18856.
-
-Reference:
-* https://www.postgresql.org/message-id/18856-378db632176b54e5%40postgresql.org
-#}
-{% if postgres_config_include_dir | default(['conf.d']) | length > 0 %}
-{% for dir in postgres_config_include_dir %}
-include_dir '{{ dir }}'
-{% endfor %}
-{% endif %}
-{% if postgres_config_include_if_exists | default([]) | length > 0 %}
-{% for dir in postgres_config_include_if_exists %}
-include_if_exists '{{ dir }}'
-{% endfor %}
-{% endif %}
-{% if postgres_config_include | default([]) | length > 0 %}
-{% for dir in postgres_config_include %}
-include '{{ dir }}'
-{% endfor %}
-{% endif %}

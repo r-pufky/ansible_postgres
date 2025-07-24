@@ -11,4 +11,4 @@
 #
 # Reference:
 # * https://www.postgresql.org/docs/17/app-pg-ctl.html
-postgres_ctl_config: []
+postgres_cfg_ctl: []

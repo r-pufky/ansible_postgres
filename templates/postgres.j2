@@ -1,2 +1,2 @@
-export PGDATA={{ postgres_config.data_directory }}
-export PATH=$PATH:{{ _postgres_bin }}
+export PGDATA={{ _postgres_cfg_data_directory.raw }}
+export PATH=$PATH:{{ _postgres.bin }}
