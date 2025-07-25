@@ -196,7 +196,7 @@
             (db.login_unix_socket
              if user.login_unix_socket is defined else
              _postgres_srv_user_connection.raw.login_unix_socket) |
-            default(postgres_config.unix_socket_directories[0])
+            default(_postgres_cfg_unix_socket_directories.raw[0])
           }}'
         login_user: '{{
             (db.login_user

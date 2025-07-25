@@ -18,22 +18,6 @@
 # Reference:
 # * https://postgresqlco.nf/doc/en/param/
 
-# TODO(role): move to annotate and update these docstrings, etc.
-# Postgres config dictionary.
-#
-# Lists will be converted to comma-separated strings, numerics and booleans
-# will be rendered without quoting, and strings will automatically be
-# encapsulated with single quotes. These are written before include directives.
-#
-# Deprecated options may be directly removed from postgres_config. Additional
-# options from future Postgres updates that are not currently in
-# the role may be directly added as well. If you are adding new variables for
-# new releases, please submit a bug with the specific key that needs to be
-# added to the default config.
-#
-# Reference:
-# * https://github.com/r-pufky/ansible_deluge/issues
-postgres_config:
 #############################################################################
 # File Locations
 #############################################################################

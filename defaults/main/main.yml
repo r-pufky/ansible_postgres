@@ -157,11 +157,11 @@ postgres_srv_user_data_manage_enable: false
 #   login_password: str - Password used to authenticate with.
 #       Default: omit.
 #   login_unix_socket: str - Unix domain socket path for local connections.
-#       Default: '{{ postgres_config.unix_socket_directories[0] }}'.
+#       Default: '{{ postgres_cfg_unix_socket_directories[0] }}'.
 #   login_user: str - Username module uses to establish PostgreSQL session.
 #       Default: 'postgres'.
 #   port: int - Database port to connect to.
-#       Default: '{{ postgres_config.port }}'.
+#       Default: '{{ postgres_cfg_port }}'.
 #   session_role: str - Switch to session role after connecting.
 #         The specified session role must be a role that the current
 #         login_user is a member of. Permissions checking for SQL commands is
@@ -194,7 +194,7 @@ postgres_srv_user_data_manage_enable: false
 #   login_host: 'localhost'
 #   login_unix_socket: '{{ postgres_config.unix_socket_directories[0] }}'
 #   login_user: '{{ postgres_srv_user }}'
-#   port: '{{ postgres_config.port }}'
+#   port: '{{ postgres_cfg_port }}'
 #
 # Default: [].
 #
@@ -203,6 +203,6 @@ postgres_srv_user_data_manage_enable: false
 # * https://docs.ansible.com/ansible/latest/collections/community/postgresql/postgresql_privs_module.html
 postgres_srv_user_connection:
   login_host: 'localhost'
-  login_unix_socket: '{{ postgres_config.unix_socket_directories[0] }}'
+  login_unix_socket: '{{ postgres_cfg_unix_socket_directories[0] }}'
   login_user: '{{ postgres_srv_user }}'
-  port: '{{ postgres_config.port }}'
+  port: '{{ postgres_cfg_port }}'

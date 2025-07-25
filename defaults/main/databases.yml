@@ -61,7 +61,7 @@
 #         Default: postgres_srv_user_connection.login_password or omit.
 #     login_unix_socket: str - Unix domain socket path for local connections.
 #         Default: postgres_srv_user_connection.login_unix_socket or
-#                  postgres_config.unix_socket_directories[0].
+#                  postgres_cfg_unix_socket_directories[0].
 #     login_user: str - Username module uses to establish PostgreSQL session.
 #         Default: postgres_srv_user_connection.login_user or 'postgres'.
 #     maintenance_db: str - Initial database (which is also called maintenance
@@ -71,7 +71,7 @@
 #     owner: str - Name of the user (role) to set as owner of the database.
 #         Default: postgres_srv_user.
 #     port: int - Database port to connect to.
-#         Default: postgres_srv_user_connection.port or postgres_config.port.
+#         Default: postgres_srv_user_connection.port or postgres_cfg_port.
 #     session_role: str - Switch to session role after connecting.
 #           The specified session role must be a role that the current
 #           login_user is a member of. Permissions checking for SQL commands is

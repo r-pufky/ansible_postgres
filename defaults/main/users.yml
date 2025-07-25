@@ -53,7 +53,7 @@
 #         Default: postgres_srv_user_connection.login_password or omit.
 #     login_unix_socket: str - Unix domain socket path for local connections.
 #         Default: postgres_srv_user_connection.login_unix_socket or
-#                  postgres_config.unix_socket_directories[0].
+#                  postgres_cfg_unix_socket_directories[0].
 #     login_user: str - Username module uses to establish PostgreSQL session.
 #         Default: postgres_srv_user_connection.login_user or 'postgres'.
 #     name: str - Name of the user (role) to add or remove.
@@ -72,7 +72,7 @@
 #             {MD5}: MD5 hashed passwords are stored as-is.
 #         Default: omit.
 #     port: int - Database port to connect to.
-#         Default: postgres_srv_user_connection.port or postgres_config.port.
+#         Default: postgres_srv_user_connection.port or postgres_cfg_port.
 #     reset_unspecified_configuration: bool - Reset user default configuration
 #           parameters if not included in configuration?
 #         Default: False.

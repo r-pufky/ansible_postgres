@@ -95,52 +95,13 @@ site.yml
 ```
 
 ### Deploying versions with different configuration settings.
-Role will automatically parse `postgres_config` variables and render them
-correctly to `postgresql.conf`. See documentation. Just **remove** or **add**
-variables for the version of Postgres being installed.
+Apply role for each specific instance. Postgres releases outside of the role
+releases version may have limited suppport.
 
-Please submit a bug if a new version of Postgres has been releases and updated
+See documentation.
+
+Please submit a bug if a new version of Postgres has been released and updated
 default configuration variables are needed.
-
-host_vars/db.example.com/vars/postgres.yml
-``` yaml
-postgres_config:
-  ...
-  some_deprecated_option: 'some value'
-  some_new_option: 'some value'
-  ...
-postgres_cfg_users:
-  - name: 'example'
-    host: 'localhost'
-    password: '{{ vault_db_test_password }}'
-    state: 'present'
-    append_privs: false
-    encrypted: true
-    extensions:
-      priv:
-        - login_db: 'postgres'
-          privs: 'ALL'
-          type: 'database'
-        - login_db: 'some_app'
-          privs: 'ALL'
-          type: 'database'
-postgres_cfg_databases:
-  - name: 'some_app'
-    owner: 'example'
-    extensions:
-      db_import:
-        enable: true
-        source: 'host_vars/db.example.com/files/skeleton_default.sql'
-```
-
-site.yml
-``` yaml
-- name: 'db server'
-  hosts: 'db.example.com'
-  become: true
-  roles:
-     - 'r_pufky.srv.postgres'
-```
 
 ## Development
 Configure [environment](https://github.com/r-pufky/ansible_collection_srv/blob/main/docs/dev/environment/README.md)
