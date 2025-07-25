@@ -479,7 +479,7 @@
         }}',
       hint: 'str',
       added: '0.0.0',
-      sensitive: false,
+      sensitive: true,
       deprecated: false,
       order: 23,
     }
@@ -519,7 +519,7 @@
       raw: '{{ postgres_cfg_ssl_ca_file | default("") }}',
       hint: 'str',
       added: '0.0.0',
-      sensitive: false,
+      sensitive: true,
       deprecated: false,
       order: 27,
     }
@@ -532,7 +532,7 @@
         }}',
       hint: 'str',
       added: '0.0.0',
-      sensitive: false,
+      sensitive: true,
       deprecated: false,
       order: 28,
     }
@@ -565,7 +565,7 @@
         }}',
       hint: 'str',
       added: '0.0.0',
-      sensitive: false,
+      sensitive: true,
       deprecated: false,
       order: 31,
     }
@@ -632,7 +632,7 @@
       raw: '{{ postgres_cfg_ssl_dh_params_file | default("") }}',
       hint: 'str',
       added: '0.0.0',
-      sensitive: false,
+      sensitive: true,
       deprecated: false,
       order: 37,
     }
@@ -642,7 +642,7 @@
       raw: '{{ postgres_cfg_ssl_passphrase_command | default("") }}',
       hint: 'str',
       added: '0.0.0',
-      sensitive: false,
+      sensitive: true,
       deprecated: false,
       order: 38,
     }
@@ -3885,7 +3885,7 @@
       role: '',  # (option string) Update after initial set.
       hint: 'list of str',
       added: '0.0.0',
-      sensitive: false,
+      sensitive: true,
       deprecated: false,
       order: 9,
     }
@@ -3895,7 +3895,7 @@
       raw: '{{ postgres_cfg_users | default([]) }}',
       hint: 'list of dict',
       added: '0.0.0',
-      sensitive: false,
+      sensitive: true,
       deprecated: false,
       order: 1,
     }
