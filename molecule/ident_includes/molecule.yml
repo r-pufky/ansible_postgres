@@ -26,6 +26,7 @@ provisioner:
   inventory:
     group_vars:
       all:
+        postgres_cfg_include_dir: []
         postgres_cfg_hba:
           - comment: 'unauthenticated local login for testing'
             type: 'local'

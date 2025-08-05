@@ -24,20 +24,21 @@
 # * Simplified role updates for variable changes.
 # * All data touched by user is in a standard, expected format.
 #
-# Annotated Defaults:
+# Annotated Defaults (2.0):
 # _{VAR}: dict - Annotated and sanitized default variable.
 #   section: str - Section name.
 #   key: str - Config file key.
-#   raw: any - Raw config file value (set from defaults > role defaults).
-#   parsed: any - Processed raw config file value. Optional.
-#   role: any - Role specific config usage. Optional.
+#   raw: any - Raw value from user, defaults, or role defaults.
+#   data: any - Processed raw value for use in rendering. Optional.
+#   default: any - Role default (testing for changed defaults).
 #   hint: str - Value rendering type hint (docstring types).
+#   role_*: any - Role specific usage. Optional.
 #   added: str - Release version variable added.
 #       Special Case:
 #         0.0.0: Unknown or since role inception.
 #   sensitive: bool - True for PII/SPII data that should not be logged.
 #   deprecated: bool - True if no longer used in current role release.
-#   order: int - Order item should appear in rendered files.
+#   order: int - Order item should appear in templated files.
 #
 # Generates:
 #   _postgres: dict - Role runtime specific config.
@@ -63,140 +64,6 @@
       postgres_service_* -> postgres_srv_*
       postgres_* -> postgres_srv_*
 
-- name: 'Annotate | sanitize & annotate service defaults'
-  ansible.builtin.set_fact:
-    _postgres_srv_version: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_version | default("17") }}',
-      hint: 'str',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 1,
-    }
-    _postgres_srv_confd_path: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_confd_path | default("") }}',
-      role: '{{
-          postgres_srv_confd_path | default("")
-          if not (postgres_srv_confd_path | default("")).endswith("/") else
-          postgres_srv_confd_path | default("") | regex_replace("\\/$", "")
-        }}',
-      hint: 'str',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 2,
-    }
-    _postgres_srv_profile_path: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_profile_path | default("") }}',
-      role: '{{
-          postgres_srv_profile_path | default("")
-          if not (postgres_srv_profile_path | default("")).endswith("/") else
-          postgres_srv_profile_path | default("") | regex_replace("\\/$", "")
-        }}',
-      hint: 'str',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 3,
-    }
-    _postgres_srv_startup: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_startup | default("auto") }}',
-      hint: 'str',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 4,
-    }
-    _postgres_srv_purge_enable: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_purge_enable | default(true) }}',
-      parsed: '{{ postgres_srv_purge_enable | default(true) | lower }}',
-      role: '{{
-          "postgresql-" ~
-          postgres_srv_purge_enable | default(true) | lower ~
-          "/postrm_purge_data"
-        }}',  # debconf question.
-      hint: 'bool',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 5,
-    }
-    _postgres_srv_auto_upgrade_enable: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_auto_upgrade_enable | default(false) }}',
-      parsed:
-        '{{ postgres_srv_auto_upgrade_enable | default(false) | lower }}',
-      role: 'postgresql/auto_upgrade',  # debconf question.
-      hint: 'bool',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 6,
-    }
-    _postgres_srv_user: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_user | default("postgres") }}',
-      parsed: '',  # (UID) Updated in prep.
-      hint: 'str',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 7,
-    }
-    _postgres_srv_group: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_group | default("postgres") }}',
-      parsed: '',  # (GID) Updated in prep.
-      hint: 'bool',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 8,
-    }
-    _postgres_srv_create_user: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_create_user | default(true) }}',
-      hint: 'bool',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 9,
-    }
-    _postgres_srv_user_data_manage_enable: {
-      section: '',
-      key: '',
-      raw: '{{ postgres_srv_user_data_manage_enable | default(false) }}',
-      hint: 'bool',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 10,
-    }
-    _postgres_srv_user_connection: {
-      section: '',
-      key: '',
-      raw: '',  # (connection) Update after initial set, requires annotations.
-      hint: 'dict',
-      added: '0.0.0',
-      sensitive: false,
-      deprecated: false,
-      order: 11,
-    }
-
 - name: 'Annotate | normalize base paths'
   ansible.builtin.set_fact:
     _postgres: {
@@ -216,7 +83,6 @@
           "pid": _postgres.var_run ~ "-main.pid",
           "bin": _postgres.usr ~ "/bin",
           "initdb": _postgres.usr ~ "/bin/initdb",
-          "main": _postgres.usr ~ "/main",
           "confd": _postgres.etc ~ "/main/conf.d",
           "environment": _postgres.etc ~ "/main/environment",
           "postgresql": _postgres.etc ~ "/main/postgresql.conf",
@@ -226,16 +92,162 @@
         })
       }}'
 
+- name: 'Annotate | sanitize & annotate service defaults'
+  ansible.builtin.set_fact:
+    _postgres_srv_version: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_version }}',
+      default: '17',
+      hint: 'str',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 1,
+    }
+    _postgres_srv_confd_path: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_confd_path }}',
+      default: '',
+      role_src:
+        "{{ postgres_srv_confd_path | regex_replace('\\/$', '') ~ '/' }}",
+      role_dest: '{{ _postgres.confd }}',
+      role_perms: '0640',
+      hint: 'str',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 2,
+    }
+    _postgres_srv_profile_path: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_profile_path }}',
+      default: '',
+      role_src: "{{ postgres_srv_profile_path | regex_replace('\\/$', '') }}",
+      role_dest: '/etc/profile.d/postgres',
+      role_perms: '0644',
+      hint: 'str',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 3,
+    }
+    _postgres_srv_startup: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_startup }}',
+      default: 'auto',
+      role_dest: '{{ _postgres.start }}',
+      role_perms: '0644',
+      hint: 'str',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 4,
+    }
+    _postgres_srv_purge_enable: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_purge_enable }}',
+      default: true,
+      role_question: '{{
+          "postgresql-" ~
+          postgres_srv_purge_enable | lower ~
+          "/postrm_purge_data"
+        }}',
+      role_value: '{{ postgres_srv_purge_enable | lower }}',
+      hint: 'bool',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 5,
+    }
+    _postgres_srv_auto_upgrade_enable: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_auto_upgrade_enable }}',
+      default: false,
+      role_question: 'postgresql/auto_upgrade',
+      role_value: '{{ postgres_srv_auto_upgrade_enable | lower }}',
+      hint: 'bool',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 6,
+    }
+    _postgres_srv_user: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_user }}',
+      default: 'postgres',
+      role_uid: '',  # (str) UID.
+      hint: 'str',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 7,
+    }
+    _postgres_srv_group: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_group }}',
+      default: 'postgres',
+      role_gid: '',  # (str) GID.
+      hint: 'str',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 8,
+    }
+    _postgres_srv_create_user: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_create_user }}',
+      default: true,
+      hint: 'bool',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 9,
+    }
+    _postgres_srv_user_data_manage_enable: {
+      section: '',
+      key: '',
+      raw: '{{ postgres_srv_user_data_manage_enable }}',
+      default: false,
+      hint: 'bool',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 10,
+    }
+    _postgres_srv_user_connection: {
+      section: '',
+      key: '',
+      raw: {},  # (dict) connection options.
+      default: {},
+      hint: 'dict',
+      added: '0.0.0',
+      sensitive: false,
+      deprecated: false,
+      order: 11,
+    }
 - name: 'Annotate | sanitize & annotate config defaults'
   ansible.builtin.set_fact:
     _postgres_cfg_data_directory: {
       section: 'postgres.conf',
       key: 'data_directory',
-      raw: '{{ postgres_cfg_data_directory | default(_postgres.data) }}',
-      parsed: '{{
-          postgres_cfg_data_directory | default(_postgres.data) ~ "/PG_VERSION"
-        }}',
-      role: '{{ _postgres.initdb }}',
+      raw: '{{ postgres_cfg_data_directory }}',
+      default: '{{ _postgres.data }}',
+      role_initdb: '{{ _postgres.initdb }}',
+      role_bin: '{{ _postgres.bin }}',
+      role_pg_version_dir: "{{
+          postgres_cfg_data_directory |
+          regex_replace('\\/$', '') ~ '/PG_VERSION'
+        }}",
+      role_perms: '0700',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -245,9 +257,11 @@
     _postgres_cfg_hba_file: {
       section: 'postgres.conf',
       key: 'hba_file',
-      raw: '{{ postgres_cfg_hba_file | default(_postgres.pg_hba) }}',
-      parsed:
-        '{{ postgres_cfg_hba_file | default(_postgres.pg_hba) | dirname }}',
+      raw: '{{ postgres_cfg_hba_file }}',
+      default: '{{ _postgres.pg_hba }}',
+      role_hba_dir: '{{ postgres_cfg_hba_file | dirname }}',
+      role_hba_dir_perms: '0755',
+      role_perms: '0640',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -257,10 +271,11 @@
     _postgres_cfg_ident_file: {
       section: 'postgres.conf',
       key: 'ident_file',
-      raw: '{{ postgres_cfg_ident_file | default(_postgres.pg_ident) }}',
-      parsed: '{{
-          postgres_cfg_ident_file | default(_postgres.pg_ident) | dirname
-        }}',
+      raw: '{{ postgres_cfg_ident_file }}',
+      default: '{{ _postgres.pg_ident }}',
+      role_ident_dir: '{{ postgres_cfg_ident_file | dirname }}',
+      role_ident_dir_perms: '0755',
+      role_perms: '0640',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -270,10 +285,10 @@
     _postgres_cfg_external_pid_file: {
       section: 'postgres.conf',
       key: 'external_pid_file',
-      raw: '{{ postgres_cfg_external_pid_file | default(_postgres.pid) }}',
-      parsed: '{{
-          postgres_cfg_external_pid_file | default(_postgres.pid) | dirname
-        }}',
+      raw: '{{ postgres_cfg_external_pid_file }}',
+      default: '{{ _postgres.pid }}',
+      role_pid_dir: '{{ postgres_cfg_external_pid_file | dirname }}',
+      role_perms: '2775',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -283,10 +298,9 @@
     _postgres_cfg_listen_addresses: {
       section: 'postgres.conf',
       key: 'listen_addresses',
-      raw: '{{ postgres_cfg_listen_addresses | default(["localhost"]) }}',
-      parsed: '{{
-          postgres_cfg_listen_addresses | default(["localhost"]) | join(",")
-        }}',
+      raw: '{{ postgres_cfg_listen_addresses }}',
+      data: '{{ postgres_cfg_listen_addresses | join(",") }}',
+      default: ['localhost'],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -296,7 +310,8 @@
     _postgres_cfg_port: {
       section: 'postgres.conf',
       key: 'port',
-      raw: '{{ postgres_cfg_port | default(5432) }}',
+      raw: '{{ postgres_cfg_port }}',
+      default: 5432,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -306,7 +321,8 @@
     _postgres_cfg_max_connections: {
       section: 'postgres.conf',
       key: 'max_connections',
-      raw: '{{ postgres_cfg_max_connections | default(100) }}',
+      raw: '{{ postgres_cfg_max_connections }}',
+      default: 100,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -316,7 +332,8 @@
     _postgres_cfg_reserved_connections: {
       section: 'postgres.conf',
       key: 'reserved_connections',
-      raw: '{{ postgres_cfg_reserved_connections | default(0) }}',
+      raw: '{{ postgres_cfg_reserved_connections }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -326,7 +343,8 @@
     _postgres_cfg_superuser_reserved_connections: {
       section: 'postgres.conf',
       key: 'superuser_reserved_connections',
-      raw: '{{ postgres_cfg_superuser_reserved_connections | default(3) }}',
+      raw: '{{ postgres_cfg_superuser_reserved_connections }}',
+      default: 3,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -336,14 +354,9 @@
     _postgres_cfg_unix_socket_directories: {
       section: 'postgres.conf',
       key: 'unix_socket_directories',
-      raw: '{{
-          postgres_cfg_unix_socket_directories |
-          default(["/var/run/postgresql"])
-        }}',
-      parsed: '{{
-          postgres_cfg_unix_socket_directories |
-          default(["/var/run/postgresql"]) | join(",")
-        }}',
+      raw: '{{ postgres_cfg_unix_socket_directories }}',
+      data: '{{ postgres_cfg_unix_socket_directories | join(",") }}',
+      default: ['/var/run/postgresql'],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -353,7 +366,8 @@
     _postgres_cfg_unix_socket_group: {
       section: 'postgres.conf',
       key: 'unix_socket_group',
-      raw: '{{ postgres_cfg_unix_socket_group | default("") }}',
+      raw: '{{ postgres_cfg_unix_socket_group }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -363,7 +377,8 @@
     _postgres_cfg_unix_socket_permissions: {
       section: 'postgres.conf',
       key: 'unix_socket_permissions',
-      raw: '{{ postgres_cfg_unix_socket_permissions | default("0777") }}',
+      raw: '{{ postgres_cfg_unix_socket_permissions }}',
+      default: '0777',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -373,7 +388,8 @@
     _postgres_cfg_bonjour: {
       section: 'postgres.conf',
       key: 'bonjour',
-      raw: '{{ postgres_cfg_bonjour | default(false) }}',
+      raw: '{{ postgres_cfg_bonjour }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -383,7 +399,8 @@
     _postgres_cfg_bonjour_name: {
       section: 'postgres.conf',
       key: 'bonjour_name',
-      raw: '{{ postgres_cfg_bonjour_name | default("") }}',
+      raw: '{{ postgres_cfg_bonjour_name }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -393,7 +410,8 @@
     _postgres_cfg_tcp_keepalives_idle: {
       section: 'postgres.conf',
       key: 'tcp_keepalives_idle',
-      raw: '{{ postgres_cfg_tcp_keepalives_idle | default(0) }}',
+      raw: '{{ postgres_cfg_tcp_keepalives_idle }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -403,7 +421,8 @@
     _postgres_cfg_tcp_keepalives_interval: {
       section: 'postgres.conf',
       key: 'tcp_keepalives_interval',
-      raw: '{{ postgres_cfg_tcp_keepalives_interval | default(0) }}',
+      raw: '{{ postgres_cfg_tcp_keepalives_interval }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -413,7 +432,8 @@
     _postgres_cfg_tcp_keepalives_count: {
       section: 'postgres.conf',
       key: 'tcp_keepalives_count',
-      raw: '{{ postgres_cfg_tcp_keepalives_count | default(0) }}',
+      raw: '{{ postgres_cfg_tcp_keepalives_count }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -423,7 +443,8 @@
     _postgres_cfg_tcp_user_timeout: {
       section: 'postgres.conf',
       key: 'tcp_user_timeout',
-      raw: '{{ postgres_cfg_tcp_user_timeout | default(0) }}',
+      raw: '{{ postgres_cfg_tcp_user_timeout }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -433,7 +454,8 @@
     _postgres_cfg_client_connection_check_interval: {
       section: 'postgres.conf',
       key: 'client_connection_check_interval',
-      raw: '{{ postgres_cfg_client_connection_check_interval | default(0) }}',
+      raw: '{{ postgres_cfg_client_connection_check_interval }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -443,7 +465,8 @@
     _postgres_cfg_authentication_timeout: {
       section: 'postgres.conf',
       key: 'authentication_timeout',
-      raw: '{{ postgres_cfg_authentication_timeout | default("1min") }}',
+      raw: '{{ postgres_cfg_authentication_timeout }}',
+      default: '1min',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -453,7 +476,8 @@
     _postgres_cfg_password_encryption: {
       section: 'postgres.conf',
       key: 'password_encryption',
-      raw: '{{ postgres_cfg_password_encryption | default("scram-sha-256") }}',
+      raw: '{{ postgres_cfg_password_encryption }}',
+      default: 'scram-sha-256',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -463,7 +487,8 @@
     _postgres_cfg_scram_iterations: {
       section: 'postgres.conf',
       key: 'scram_iterations',
-      raw: '{{ postgres_cfg_scram_iterations | default(4096) }}',
+      raw: '{{ postgres_cfg_scram_iterations }}',
+      default: 4096,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -473,10 +498,8 @@
     _postgres_cfg_krb_server_keyfile: {
       section: 'postgres.conf',
       key: 'krb_server_keyfile',
-      raw: '{{
-          postgres_cfg_krb_server_keyfile |
-          default("FILE:${sysconfdir}/krb5.keytab")
-        }}',
+      raw: '{{ postgres_cfg_krb_server_keyfile }}',
+      default: 'FILE:${sysconfdir}/krb5.keytab',
       hint: 'str',
       added: '0.0.0',
       sensitive: true,
@@ -486,7 +509,8 @@
     _postgres_cfg_krb_caseins_users: {
       section: 'postgres.conf',
       key: 'krb_caseins_users',
-      raw: '{{ postgres_cfg_krb_caseins_users | default(false) }}',
+      raw: '{{ postgres_cfg_krb_caseins_users }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -496,7 +520,8 @@
     _postgres_cfg_gss_accept_delegation: {
       section: 'postgres.conf',
       key: 'gss_accept_delegation',
-      raw: '{{ postgres_cfg_gss_accept_delegation | default(false) }}',
+      raw: '{{ postgres_cfg_gss_accept_delegation }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -506,7 +531,8 @@
     _postgres_cfg_ssl: {
       section: 'postgres.conf',
       key: 'ssl',
-      raw: '{{ postgres_cfg_ssl | default(true) }}',
+      raw: '{{ postgres_cfg_ssl }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -516,7 +542,8 @@
     _postgres_cfg_ssl_ca_file: {
       section: 'postgres.conf',
       key: 'ssl_ca_file',
-      raw: '{{ postgres_cfg_ssl_ca_file | default("") }}',
+      raw: '{{ postgres_cfg_ssl_ca_file }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: true,
@@ -526,10 +553,8 @@
     _postgres_cfg_ssl_cert_file: {
       section: 'postgres.conf',
       key: 'ssl_cert_file',
-      raw: '{{
-          postgres_cfg_ssl_cert_file |
-          default("/etc/ssl/certs/ssl-cert-snakeoil.pem")
-        }}',
+      raw: '{{ postgres_cfg_ssl_cert_file }}',
+      default: '/etc/ssl/certs/ssl-cert-snakeoil.pem',
       hint: 'str',
       added: '0.0.0',
       sensitive: true,
@@ -539,7 +564,8 @@
     _postgres_cfg_ssl_crl_file: {
       section: 'postgres.conf',
       key: 'ssl_crl_file',
-      raw: '{{ postgres_cfg_ssl_crl_file | default("") }}',
+      raw: '{{ postgres_cfg_ssl_crl_file }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -549,7 +575,8 @@
     _postgres_cfg_ssl_crl_dir: {
       section: 'postgres.conf',
       key: 'ssl_crl_dir',
-      raw: '{{ postgres_cfg_ssl_crl_dir | default("") }}',
+      raw: '{{ postgres_cfg_ssl_crl_dir }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -559,10 +586,8 @@
     _postgres_cfg_ssl_key_file: {
       section: 'postgres.conf',
       key: 'ssl_key_file',
-      raw: '{{
-          postgres_cfg_ssl_key_file |
-          default("/etc/ssl/private/ssl-cert-snakeoil.key")
-        }}',
+      raw: '{{ postgres_cfg_ssl_key_file }}',
+      default: '/etc/ssl/private/ssl-cert-snakeoil.key',
       hint: 'str',
       added: '0.0.0',
       sensitive: true,
@@ -572,14 +597,9 @@
     _postgres_cfg_ssl_ciphers: {
       section: 'postgres.conf',
       key: 'ssl_ciphers',
-      raw: '{{
-          postgres_cfg_ssl_ciphers |
-          default(["HIGH", "MEDIUM", "+3DES", "!aNULL"])
-        }}',
-      parsed: '{{
-          postgres_cfg_ssl_ciphers |
-          default(["HIGH", "MEDIUM", "+3DES", "!aNULL"]) | join(":")
-        }}',
+      raw: '{{ postgres_cfg_ssl_ciphers }}',
+      data: '{{ postgres_cfg_ssl_ciphers | join(":") }}',
+      default: ['HIGH', 'MEDIUM', '+3DES', '!aNULL'],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -589,7 +609,8 @@
     _postgres_cfg_ssl_prefer_server_ciphers: {
       section: 'postgres.conf',
       key: 'ssl_prefer_server_ciphers',
-      raw: '{{ postgres_cfg_ssl_prefer_server_ciphers | default(true) }}',
+      raw: '{{ postgres_cfg_ssl_prefer_server_ciphers }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -599,7 +620,8 @@
     _postgres_cfg_ssl_ecdh_curve: {
       section: 'postgres.conf',
       key: 'ssl_ecdh_curve',
-      raw: '{{ postgres_cfg_ssl_ecdh_curve | default("prime256v1") }}',
+      raw: '{{ postgres_cfg_ssl_ecdh_curve }}',
+      default: 'prime256v1',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -609,7 +631,8 @@
     _postgres_cfg_ssl_min_protocol_version: {
       section: 'postgres.conf',
       key: 'ssl_min_protocol_version',
-      raw: '{{ postgres_cfg_ssl_min_protocol_version | default("TLSv1.2") }}',
+      raw: '{{ postgres_cfg_ssl_min_protocol_version }}',
+      default: 'TLSv1.2',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -619,7 +642,8 @@
     _postgres_cfg_ssl_max_protocol_version: {
       section: 'postgres.conf',
       key: 'ssl_max_protocol_version',
-      raw: '{{ postgres_cfg_ssl_max_protocol_version | default("") }}',
+      raw: '{{ postgres_cfg_ssl_max_protocol_version }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -629,7 +653,8 @@
     _postgres_cfg_ssl_dh_params_file: {
       section: 'postgres.conf',
       key: 'ssl_dh_params_file',
-      raw: '{{ postgres_cfg_ssl_dh_params_file | default("") }}',
+      raw: '{{ postgres_cfg_ssl_dh_params_file }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: true,
@@ -639,7 +664,8 @@
     _postgres_cfg_ssl_passphrase_command: {
       section: 'postgres.conf',
       key: 'ssl_passphrase_command',
-      raw: '{{ postgres_cfg_ssl_passphrase_command | default("") }}',
+      raw: '{{ postgres_cfg_ssl_passphrase_command }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: true,
@@ -649,10 +675,8 @@
     _postgres_cfg_ssl_passphrase_command_supports_reload: {
       section: 'postgres.conf',
       key: 'ssl_passphrase_command_supports_reload',
-      raw: '{{
-          postgres_cfg_ssl_passphrase_command_supports_reload |
-          default(false)
-        }}',
+      raw: '{{ postgres_cfg_ssl_passphrase_command_supports_reload }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -662,7 +686,8 @@
     _postgres_cfg_shared_buffers: {
       section: 'postgres.conf',
       key: 'shared_buffers',
-      raw: '{{ postgres_cfg_shared_buffers | default("128MB") }}',
+      raw: '{{ postgres_cfg_shared_buffers }}',
+      default: 128MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -672,7 +697,8 @@
     _postgres_cfg_huge_pages: {
       section: 'postgres.conf',
       key: 'huge_pages',
-      raw: '{{ postgres_cfg_huge_pages | default("try") }}',
+      raw: '{{ postgres_cfg_huge_pages }}',
+      default: try',
       hint: 'str or bool',
       added: '0.0.0',
       sensitive: false,
@@ -682,7 +708,8 @@
     _postgres_cfg_huge_page_size: {
       section: 'postgres.conf',
       key: 'huge_page_size',
-      raw: '{{ postgres_cfg_huge_page_size | default(0) }}',
+      raw: '{{ postgres_cfg_huge_page_size }}',
+      default: 0',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -692,7 +719,8 @@
     _postgres_cfg_temp_buffers: {
       section: 'postgres.conf',
       key: 'temp_buffers',
-      raw: '{{ postgres_cfg_temp_buffers | default("8MB") }}',
+      raw: '{{ postgres_cfg_temp_buffers }}',
+      default: '8MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -702,7 +730,8 @@
     _postgres_cfg_max_prepared_transactions: {
       section: 'postgres.conf',
       key: 'max_prepared_transactions',
-      raw: '{{ postgres_cfg_max_prepared_transactions | default(0) }}',
+      raw: '{{ postgres_cfg_max_prepared_transactions }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -712,7 +741,8 @@
     _postgres_cfg_work_mem: {
       section: 'postgres.conf',
       key: 'work_mem',
-      raw: '{{ postgres_cfg_work_mem | default("4MB") }}',
+      raw: '{{ postgres_cfg_work_mem }}',
+      default: '4MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -722,7 +752,8 @@
     _postgres_cfg_hash_mem_multiplier: {
       section: 'postgres.conf',
       key: 'hash_mem_multiplier',
-      raw: '{{ postgres_cfg_hash_mem_multiplier | default(2.0) }}',
+      raw: '{{ postgres_cfg_hash_mem_multiplier }}',
+      default: 2.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -732,7 +763,8 @@
     _postgres_cfg_maintenance_work_mem: {
       section: 'postgres.conf',
       key: 'maintenance_work_mem',
-      raw: '{{ postgres_cfg_maintenance_work_mem | default("64MB") }}',
+      raw: '{{ postgres_cfg_maintenance_work_mem }}',
+      default: '64MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -742,7 +774,8 @@
     _postgres_cfg_autovacuum_work_mem: {
       section: 'postgres.conf',
       key: 'autovacuum_work_mem',
-      raw: '{{ postgres_cfg_autovacuum_work_mem | default(-1) }}',
+      raw: '{{ postgres_cfg_autovacuum_work_mem }}',
+      default: -1',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -752,7 +785,8 @@
     _postgres_cfg_logical_decoding_work_mem: {
       section: 'postgres.conf',
       key: 'logical_decoding_work_mem',
-      raw: '{{ postgres_cfg_logical_decoding_work_mem | default("64MB") }}',
+      raw: '{{ postgres_cfg_logical_decoding_work_mem }}',
+      default: '64MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -762,7 +796,8 @@
     _postgres_cfg_max_stack_depth: {
       section: 'postgres.conf',
       key: 'max_stack_depth',
-      raw: '{{ postgres_cfg_max_stack_depth | default("2MB") }}',
+      raw: '{{ postgres_cfg_max_stack_depth }}',
+      default: '2MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -772,7 +807,8 @@
     _postgres_cfg_shared_memory_type: {
       section: 'postgres.conf',
       key: 'shared_memory_type',
-      raw: '{{ postgres_cfg_shared_memory_type | default("mmap") }}',
+      raw: '{{ postgres_cfg_shared_memory_type }}',
+      default: 'mmap',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -782,7 +818,8 @@
     _postgres_cfg_dynamic_shared_memory_type: {
       section: 'postgres.conf',
       key: 'dynamic_shared_memory_type',
-      raw: '{{ postgres_cfg_dynamic_shared_memory_type | default("posix") }}',
+      raw: '{{ postgres_cfg_dynamic_shared_memory_type }}',
+      default: 'posix',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -792,7 +829,8 @@
     _postgres_cfg_min_dynamic_shared_memory: {
       section: 'postgres.conf',
       key: 'min_dynamic_shared_memory',
-      raw: '{{ postgres_cfg_min_dynamic_shared_memory | default(0) }}',
+      raw: '{{ postgres_cfg_min_dynamic_shared_memory }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -802,7 +840,8 @@
     _postgres_cfg_vacuum_buffer_usage_limit: {
       section: 'postgres.conf',
       key: 'vacuum_buffer_usage_limit',
-      raw: '{{ postgres_cfg_vacuum_buffer_usage_limit | default("2MB") }}',
+      raw: '{{ postgres_cfg_vacuum_buffer_usage_limit }}',
+      default: '2MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -812,7 +851,8 @@
     _postgres_cfg_commit_timestamp_buffers: {
       section: 'postgres.conf',
       key: 'commit_timestamp_buffers',
-      raw: '{{ postgres_cfg_commit_timestamp_buffers | default(0) }}',
+      raw: '{{ postgres_cfg_commit_timestamp_buffers }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -822,7 +862,8 @@
     _postgres_cfg_multixact_offset_buffers: {
       section: 'postgres.conf',
       key: 'multixact_offset_buffers',
-      raw: '{{ postgres_cfg_multixact_offset_buffers | default("128kB") }}',
+      raw: '{{ postgres_cfg_multixact_offset_buffers }}',
+      default: '128kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -832,7 +873,8 @@
     _postgres_cfg_multixact_member_buffers: {
       section: 'postgres.conf',
       key: 'multixact_member_buffers',
-      raw: '{{ postgres_cfg_multixact_member_buffers | default("256kB") }}',
+      raw: '{{ postgres_cfg_multixact_member_buffers }}',
+      default: '256kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -842,7 +884,8 @@
     _postgres_cfg_notify_buffers: {
       section: 'postgres.conf',
       key: 'notify_buffers',
-      raw: '{{ postgres_cfg_notify_buffers | default("128kB") }}',
+      raw: '{{ postgres_cfg_notify_buffers }}',
+      default: '128kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -852,7 +895,8 @@
     _postgres_cfg_serializable_buffers: {
       section: 'postgres.conf',
       key: 'serializable_buffers',
-      raw: '{{ postgres_cfg_serializable_buffers | default("256kB") }}',
+      raw: '{{ postgres_cfg_serializable_buffers }}',
+      default: '256kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -862,7 +906,8 @@
     _postgres_cfg_subtransaction_buffers: {
       section: 'postgres.conf',
       key: 'subtransaction_buffers',
-      raw: '{{ postgres_cfg_subtransaction_buffers | default(0) }}',
+      raw: '{{ postgres_cfg_subtransaction_buffers }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -872,7 +917,8 @@
     _postgres_cfg_transaction_buffers: {
       section: 'postgres.conf',
       key: 'transaction_buffers',
-      raw: '{{ postgres_cfg_transaction_buffers | default(0) }}',
+      raw: '{{ postgres_cfg_transaction_buffers }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -882,7 +928,8 @@
     _postgres_cfg_temp_file_limit: {
       section: 'postgres.conf',
       key: 'temp_file_limit',
-      raw: '{{ postgres_cfg_temp_file_limit | default(-1) }}',
+      raw: '{{ postgres_cfg_temp_file_limit }}',
+      default: -1,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -892,7 +939,8 @@
     _postgres_cfg_max_notify_queue_pages: {
       section: 'postgres.conf',
       key: 'max_notify_queue_pages',
-      raw: '{{ postgres_cfg_max_notify_queue_pages | default(1048576) }}',
+      raw: '{{ postgres_cfg_max_notify_queue_pages }}',
+      default: 1048576,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -902,7 +950,8 @@
     _postgres_cfg_max_files_per_process: {
       section: 'postgres.conf',
       key: 'max_files_per_process',
-      raw: '{{ postgres_cfg_max_files_per_process | default(1000) }}',
+      raw: '{{ postgres_cfg_max_files_per_process }}',
+      default: 1000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -912,7 +961,8 @@
     _postgres_cfg_vacuum_cost_delay: {
       section: 'postgres.conf',
       key: 'vacuum_cost_delay',
-      raw: '{{ postgres_cfg_vacuum_cost_delay | default(0) }}',
+      raw: '{{ postgres_cfg_vacuum_cost_delay }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -922,7 +972,8 @@
     _postgres_cfg_vacuum_cost_page_hit: {
       section: 'postgres.conf',
       key: 'vacuum_cost_page_hit',
-      raw: '{{ postgres_cfg_vacuum_cost_page_hit | default(1) }}',
+      raw: '{{ postgres_cfg_vacuum_cost_page_hit }}',
+      default: 1,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -932,7 +983,8 @@
     _postgres_cfg_vacuum_cost_page_miss: {
       section: 'postgres.conf',
       key: 'vacuum_cost_page_miss',
-      raw: '{{ postgres_cfg_vacuum_cost_page_miss | default(2) }}',
+      raw: '{{ postgres_cfg_vacuum_cost_page_miss }}',
+      default: 2,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -942,7 +994,8 @@
     _postgres_cfg_vacuum_cost_page_dirty: {
       section: 'postgres.conf',
       key: 'vacuum_cost_page_dirty',
-      raw: '{{ postgres_cfg_vacuum_cost_page_dirty | default(20) }}',
+      raw: '{{ postgres_cfg_vacuum_cost_page_dirty }}',
+      default: 20,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -952,7 +1005,8 @@
     _postgres_cfg_vacuum_cost_limit: {
       section: 'postgres.conf',
       key: 'vacuum_cost_limit',
-      raw: '{{ postgres_cfg_vacuum_cost_limit | default(200) }}',
+      raw: '{{ postgres_cfg_vacuum_cost_limit }}',
+      default: 200,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -962,7 +1016,8 @@
     _postgres_cfg_bgwriter_delay: {
       section: 'postgres.conf',
       key: 'bgwriter_delay',
-      raw: '{{ postgres_cfg_bgwriter_delay | default("200ms") }}',
+      raw: '{{ postgres_cfg_bgwriter_delay }}',
+      default: '200ms',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -972,7 +1027,8 @@
     _postgres_cfg_bgwriter_lru_maxpages: {
       section: 'postgres.conf',
       key: 'bgwriter_lru_maxpages',
-      raw: '{{ postgres_cfg_bgwriter_lru_maxpages | default(100) }}',
+      raw: '{{ postgres_cfg_bgwriter_lru_maxpages }}',
+      default: 100,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -982,7 +1038,8 @@
     _postgres_cfg_bgwriter_lru_multiplier: {
       section: 'postgres.conf',
       key: 'bgwriter_lru_multiplier',
-      raw: '{{ postgres_cfg_bgwriter_lru_multiplier | default(2.0) }}',
+      raw: '{{ postgres_cfg_bgwriter_lru_multiplier }}',
+      default: 2.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -992,7 +1049,8 @@
     _postgres_cfg_bgwriter_flush_after: {
       section: 'postgres.conf',
       key: 'bgwriter_flush_after',
-      raw: '{{ postgres_cfg_bgwriter_flush_after | default("512kB") }}',
+      raw: '{{ postgres_cfg_bgwriter_flush_after }}',
+      default: '512kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1002,7 +1060,8 @@
     _postgres_cfg_backend_flush_after: {
       section: 'postgres.conf',
       key: 'backend_flush_after',
-      raw: '{{ postgres_cfg_backend_flush_after | default(0) }}',
+      raw: '{{ postgres_cfg_backend_flush_after }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1012,7 +1071,8 @@
     _postgres_cfg_effective_io_concurrency: {
       section: 'postgres.conf',
       key: 'effective_io_concurrency',
-      raw: '{{ postgres_cfg_effective_io_concurrency | default(1) }}',
+      raw: '{{ postgres_cfg_effective_io_concurrency }}',
+      default: 1,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1022,7 +1082,8 @@
     _postgres_cfg_maintenance_io_concurrency: {
       section: 'postgres.conf',
       key: 'maintenance_io_concurrency',
-      raw: '{{ postgres_cfg_maintenance_io_concurrency | default(10) }}',
+      raw: '{{ postgres_cfg_maintenance_io_concurrency }}',
+      default: 10,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1032,7 +1093,8 @@
     _postgres_cfg_io_combine_limit: {
       section: 'postgres.conf',
       key: 'io_combine_limit',
-      raw: '{{ postgres_cfg_io_combine_limit | default("128kB") }}',
+      raw: '{{ postgres_cfg_io_combine_limit }}',
+      default: '128kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1042,7 +1104,8 @@
     _postgres_cfg_max_worker_processes: {
       section: 'postgres.conf',
       key: 'max_worker_processes',
-      raw: '{{ postgres_cfg_max_worker_processes | default(8) }}',
+      raw: '{{ postgres_cfg_max_worker_processes }}',
+      default: 8,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1052,7 +1115,8 @@
     _postgres_cfg_max_parallel_workers_per_gather: {
       section: 'postgres.conf',
       key: 'max_parallel_workers_per_gather',
-      raw: '{{ postgres_cfg_max_parallel_workers_per_gather | default(2) }}',
+      raw: '{{ postgres_cfg_max_parallel_workers_per_gather }}',
+      default: 2,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1062,7 +1126,8 @@
     _postgres_cfg_max_parallel_maintenance_workers: {
       section: 'postgres.conf',
       key: 'max_parallel_maintenance_workers',
-      raw: '{{ postgres_cfg_max_parallel_maintenance_workers | default(2) }}',
+      raw: '{{ postgres_cfg_max_parallel_maintenance_workers }}',
+      default: 2,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1072,7 +1137,8 @@
     _postgres_cfg_max_parallel_workers: {
       section: 'postgres.conf',
       key: 'max_parallel_workers',
-      raw: '{{ postgres_cfg_max_parallel_workers | default(2) }}',
+      raw: '{{ postgres_cfg_max_parallel_workers }}',
+      default: 2,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1082,7 +1148,8 @@
     _postgres_cfg_parallel_leader_participation: {
       section: 'postgres.conf',
       key: 'parallel_leader_participation',
-      raw: '{{ postgres_cfg_parallel_leader_participation | default(true) }}',
+      raw: '{{ postgres_cfg_parallel_leader_participation }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1092,7 +1159,8 @@
     _postgres_cfg_wal_level: {
       section: 'postgres.conf',
       key: 'wal_level',
-      raw: '{{ postgres_cfg_wal_level | default("replica") }}',
+      raw: '{{ postgres_cfg_wal_level }}',
+      default: 'replica',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1102,7 +1170,8 @@
     _postgres_cfg_fsync: {
       section: 'postgres.conf',
       key: 'fsync',
-      raw: '{{ postgres_cfg_fsync | default(true) }}',
+      raw: '{{ postgres_cfg_fsync }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1112,7 +1181,8 @@
     _postgres_cfg_synchronous_commit: {
       section: 'postgres.conf',
       key: 'synchronous_commit',
-      raw: '{{ postgres_cfg_synchronous_commit | default(true) }}',
+      raw: '{{ postgres_cfg_synchronous_commit }}',
+      default: true,
       hint: 'str or bool',
       added: '0.0.0',
       sensitive: false,
@@ -1122,7 +1192,8 @@
     _postgres_cfg_wal_sync_method: {
       section: 'postgres.conf',
       key: 'wal_sync_method',
-      raw: '{{ postgres_cfg_wal_sync_method | default("fsync") }}',
+      raw: '{{ postgres_cfg_wal_sync_method }}',
+      default: 'fsync',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1132,7 +1203,8 @@
     _postgres_cfg_full_page_writes: {
       section: 'postgres.conf',
       key: 'full_page_writes',
-      raw: '{{ postgres_cfg_full_page_writes | default(true) }}',
+      raw: '{{ postgres_cfg_full_page_writes }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1142,7 +1214,8 @@
     _postgres_cfg_wal_log_hints: {
       section: 'postgres.conf',
       key: 'wal_log_hints',
-      raw: '{{ postgres_cfg_wal_log_hints | default(false) }}',
+      raw: '{{ postgres_cfg_wal_log_hints }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1152,7 +1225,8 @@
     _postgres_cfg_wal_compression: {
       section: 'postgres.conf',
       key: 'wal_compression',
-      raw: '{{ postgres_cfg_wal_compression | default(false) }}',
+      raw: '{{ postgres_cfg_wal_compression }}',
+      default: false,
       hint: 'str or bool',
       added: '0.0.0',
       sensitive: false,
@@ -1162,7 +1236,8 @@
     _postgres_cfg_wal_init_zero: {
       section: 'postgres.conf',
       key: 'wal_init_zero',
-      raw: '{{ postgres_cfg_wal_init_zero | default(true) }}',
+      raw: '{{ postgres_cfg_wal_init_zero }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1172,7 +1247,8 @@
     _postgres_cfg_wal_recycle: {
       section: 'postgres.conf',
       key: 'wal_recycle',
-      raw: '{{ postgres_cfg_wal_recycle | default(true) }}',
+      raw: '{{ postgres_cfg_wal_recycle }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1182,7 +1258,8 @@
     _postgres_cfg_wal_buffers: {
       section: 'postgres.conf',
       key: 'wal_buffers',
-      raw: '{{ postgres_cfg_wal_buffers | default(-1) }}',
+      raw: '{{ postgres_cfg_wal_buffers }}',
+      default: -1,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1192,7 +1269,8 @@
     _postgres_cfg_wal_writer_delay: {
       section: 'postgres.conf',
       key: 'wal_writer_delay',
-      raw: '{{ postgres_cfg_wal_writer_delay | default("200ms") }}',
+      raw: '{{ postgres_cfg_wal_writer_delay }}',
+      default: '200ms',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1202,7 +1280,8 @@
     _postgres_cfg_wal_writer_flush_after: {
       section: 'postgres.conf',
       key: 'wal_writer_flush_after',
-      raw: '{{ postgres_cfg_wal_writer_flush_after | default("1MB") }}',
+      raw: '{{ postgres_cfg_wal_writer_flush_after }}',
+      default: '1MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1212,7 +1291,8 @@
     _postgres_cfg_wal_skip_threshold: {
       section: 'postgres.conf',
       key: 'wal_skip_threshold',
-      raw: '{{ postgres_cfg_wal_skip_threshold | default("2MB") }}',
+      raw: '{{ postgres_cfg_wal_skip_threshold }}',
+      default: '2MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1222,7 +1302,8 @@
     _postgres_cfg_commit_delay: {
       section: 'postgres.conf',
       key: 'commit_delay',
-      raw: '{{ postgres_cfg_commit_delay | default(0) }}',
+      raw: '{{ postgres_cfg_commit_delay }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1232,7 +1313,8 @@
     _postgres_cfg_commit_siblings: {
       section: 'postgres.conf',
       key: 'commit_siblings',
-      raw: '{{ postgres_cfg_commit_siblings | default(5) }}',
+      raw: '{{ postgres_cfg_commit_siblings }}',
+      default: 5,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1242,7 +1324,8 @@
     _postgres_cfg_checkpoint_timeout: {
       section: 'postgres.conf',
       key: 'checkpoint_timeout',
-      raw: '{{ postgres_cfg_checkpoint_timeout | default("5min") }}',
+      raw: '{{ postgres_cfg_checkpoint_timeout }}',
+      default: '5min',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1252,7 +1335,8 @@
     _postgres_cfg_checkpoint_completion_target: {
       section: 'postgres.conf',
       key: 'checkpoint_completion_target',
-      raw: '{{ postgres_cfg_checkpoint_completion_target | default(0.9) }}',
+      raw: '{{ postgres_cfg_checkpoint_completion_target }}',
+      default: 0.9,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -1262,7 +1346,8 @@
     _postgres_cfg_checkpoint_flush_after: {
       section: 'postgres.conf',
       key: 'checkpoint_flush_after',
-      raw: '{{ postgres_cfg_checkpoint_flush_after | default("256kB") }}',
+      raw: '{{ postgres_cfg_checkpoint_flush_after }}',
+      default: '256kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1272,7 +1357,8 @@
     _postgres_cfg_checkpoint_warning: {
       section: 'postgres.conf',
       key: 'checkpoint_warning',
-      raw: '{{ postgres_cfg_checkpoint_warning | default("30s") }}',
+      raw: '{{ postgres_cfg_checkpoint_warning }}',
+      default: '30s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1282,7 +1368,8 @@
     _postgres_cfg_max_wal_size: {
       section: 'postgres.conf',
       key: 'max_wal_size',
-      raw: '{{ postgres_cfg_max_wal_size | default("1GB") }}',
+      raw: '{{ postgres_cfg_max_wal_size }}',
+      default: '1GB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1292,7 +1379,8 @@
     _postgres_cfg_min_wal_size: {
       section: 'postgres.conf',
       key: 'min_wal_size',
-      raw: '{{ postgres_cfg_min_wal_size | default("80MB") }}',
+      raw: '{{ postgres_cfg_min_wal_size }}',
+      default: '80MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1302,7 +1390,8 @@
     _postgres_cfg_recovery_prefetch: {
       section: 'postgres.conf',
       key: 'recovery_prefetch',
-      raw: '{{ postgres_cfg_recovery_prefetch | default("try") }}',
+      raw: '{{ postgres_cfg_recovery_prefetch }}',
+      default: 'try',
       hint: 'str or bool',
       added: '0.0.0',
       sensitive: false,
@@ -1312,7 +1401,8 @@
     _postgres_cfg_wal_decode_buffer_size: {
       section: 'postgres.conf',
       key: 'wal_decode_buffer_size',
-      raw: '{{ postgres_cfg_wal_decode_buffer_size | default("512kB") }}',
+      raw: '{{ postgres_cfg_wal_decode_buffer_size }}',
+      default: '512kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1322,7 +1412,8 @@
     _postgres_cfg_archive_mode: {
       section: 'postgres.conf',
       key: 'archive_mode',
-      raw: '{{ postgres_cfg_archive_mode | default(false) }}',
+      raw: '{{ postgres_cfg_archive_mode }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1332,7 +1423,8 @@
     _postgres_cfg_archive_library: {
       section: 'postgres.conf',
       key: 'archive_library',
-      raw: '{{ postgres_cfg_archive_library | default("") }}',
+      raw: '{{ postgres_cfg_archive_library }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1342,7 +1434,8 @@
     _postgres_cfg_archive_command: {
       section: 'postgres.conf',
       key: 'archive_command',
-      raw: '{{ postgres_cfg_archive_command | default("") }}',
+      raw: '{{ postgres_cfg_archive_command }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1352,7 +1445,8 @@
     _postgres_cfg_archive_timeout: {
       section: 'postgres.conf',
       key: 'archive_timeout',
-      raw: '{{ postgres_cfg_archive_timeout | default(0) }}',
+      raw: '{{ postgres_cfg_archive_timeout }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1362,7 +1456,8 @@
     _postgres_cfg_restore_command: {
       section: 'postgres.conf',
       key: 'restore_command',
-      raw: '{{ postgres_cfg_restore_command | default("") }}',
+      raw: '{{ postgres_cfg_restore_command }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1372,7 +1467,8 @@
     _postgres_cfg_archive_cleanup_command: {
       section: 'postgres.conf',
       key: 'archive_cleanup_command',
-      raw: '{{ postgres_cfg_archive_cleanup_command | default("") }}',
+      raw: '{{ postgres_cfg_archive_cleanup_command }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1382,7 +1478,8 @@
     _postgres_cfg_recovery_end_command: {
       section: 'postgres.conf',
       key: 'recovery_end_command',
-      raw: '{{ postgres_cfg_recovery_end_command | default("") }}',
+      raw: '{{ postgres_cfg_recovery_end_command }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1392,7 +1489,8 @@
     _postgres_cfg_recovery_target: {
       section: 'postgres.conf',
       key: 'recovery_target',
-      raw: '{{ postgres_cfg_recovery_target | default("") }}',
+      raw: '{{ postgres_cfg_recovery_target }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1402,7 +1500,8 @@
     _postgres_cfg_recovery_target_name: {
       section: 'postgres.conf',
       key: 'recovery_target_name',
-      raw: '{{ postgres_cfg_recovery_target_name | default("") }}',
+      raw: '{{ postgres_cfg_recovery_target_name }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1412,7 +1511,8 @@
     _postgres_cfg_recovery_target_time: {
       section: 'postgres.conf',
       key: 'recovery_target_time',
-      raw: '{{ postgres_cfg_recovery_target_time | default("") }}',
+      raw: '{{ postgres_cfg_recovery_target_time }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1422,7 +1522,8 @@
     _postgres_cfg_recovery_target_xid: {
       section: 'postgres.conf',
       key: 'recovery_target_xid',
-      raw: '{{ postgres_cfg_recovery_target_xid | default("") }}',
+      raw: '{{ postgres_cfg_recovery_target_xid }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1432,7 +1533,8 @@
     _postgres_cfg_recovery_target_lsn: {
       section: 'postgres.conf',
       key: 'recovery_target_lsn',
-      raw: '{{ postgres_cfg_recovery_target_lsn | default("") }}',
+      raw: '{{ postgres_cfg_recovery_target_lsn }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1442,7 +1544,8 @@
     _postgres_cfg_recovery_target_inclusive: {
       section: 'postgres.conf',
       key: 'recovery_target_inclusive',
-      raw: '{{ postgres_cfg_recovery_target_inclusive | default(true) }}',
+      raw: '{{ postgres_cfg_recovery_target_inclusive }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1452,7 +1555,8 @@
     _postgres_cfg_recovery_target_timeline: {
       section: 'postgres.conf',
       key: 'recovery_target_timeline',
-      raw: '{{ postgres_cfg_recovery_target_timeline | default("latest") }}',
+      raw: '{{ postgres_cfg_recovery_target_timeline }}',
+      default: 'latest',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1462,7 +1566,8 @@
     _postgres_cfg_recovery_target_action: {
       section: 'postgres.conf',
       key: 'recovery_target_action',
-      raw: '{{ postgres_cfg_recovery_target_action | default("pause") }}',
+      raw: '{{ postgres_cfg_recovery_target_action }}',
+      default: 'pause',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1472,7 +1577,8 @@
     _postgres_cfg_summarize_wal: {
       section: 'postgres.conf',
       key: 'summarize_wal',
-      raw: '{{ postgres_cfg_summarize_wal | default(false) }}',
+      raw: '{{ postgres_cfg_summarize_wal }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1482,7 +1588,8 @@
     _postgres_cfg_wal_summary_keep_time: {
       section: 'postgres.conf',
       key: 'wal_summary_keep_time',
-      raw: '{{ postgres_cfg_wal_summary_keep_time | default("10d") }}',
+      raw: '{{ postgres_cfg_wal_summary_keep_time }}',
+      default: '10d',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1493,7 +1600,8 @@
     _postgres_cfg_max_wal_senders: {
       section: 'postgres.conf',
       key: 'max_wal_senders',
-      raw: '{{ postgres_cfg_max_wal_senders | default(10) }}',
+      raw: '{{ postgres_cfg_max_wal_senders }}',
+      default: 10,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1503,7 +1611,8 @@
     _postgres_cfg_max_replication_slots: {
       section: 'postgres.conf',
       key: 'max_replication_slots',
-      raw: '{{ postgres_cfg_max_replication_slots | default(10) }}',
+      raw: '{{ postgres_cfg_max_replication_slots }}',
+      default: 10,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1513,7 +1622,8 @@
     _postgres_cfg_wal_keep_size: {
       section: 'postgres.conf',
       key: 'wal_keep_size',
-      raw: '{{ postgres_cfg_wal_keep_size | default(0) }}',
+      raw: '{{ postgres_cfg_wal_keep_size }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1523,7 +1633,8 @@
     _postgres_cfg_max_slot_wal_keep_size: {
       section: 'postgres.conf',
       key: 'max_slot_wal_keep_size',
-      raw: '{{ postgres_cfg_max_slot_wal_keep_size | default(-1) }}',
+      raw: '{{ postgres_cfg_max_slot_wal_keep_size }}',
+      default: -1,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1533,7 +1644,8 @@
     _postgres_cfg_wal_sender_timeout: {
       section: 'postgres.conf',
       key: 'wal_sender_timeout',
-      raw: '{{ postgres_cfg_wal_sender_timeout | default("60s") }}',
+      raw: '{{ postgres_cfg_wal_sender_timeout }}',
+      default: '60s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1543,7 +1655,8 @@
     _postgres_cfg_track_commit_timestamp: {
       section: 'postgres.conf',
       key: 'track_commit_timestamp',
-      raw: '{{ postgres_cfg_track_commit_timestamp | default(false) }}',
+      raw: '{{ postgres_cfg_track_commit_timestamp }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1553,7 +1666,8 @@
     _postgres_cfg_synchronous_standby_names: {
       section: 'postgres.conf',
       key: 'synchronous_standby_names',
-      raw: '{{ postgres_cfg_synchronous_standby_names | default("") }}',
+      raw: '{{ postgres_cfg_synchronous_standby_names }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1563,10 +1677,9 @@
     _postgres_cfg_synchronized_standby_slots: {
       section: 'postgres.conf',
       key: 'synchronized_standby_slots',
-      raw: '{{ postgres_cfg_synchronized_standby_slots | default([]) }}',
-      parsed: '{{
-          postgres_cfg_synchronized_standby_slots | default([]) | join(",")
-        }}',
+      raw: '{{ postgres_cfg_synchronized_standby_slots }}',
+      data: '{{ postgres_cfg_synchronized_standby_slots | join(",") }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -1576,7 +1689,8 @@
     _postgres_cfg_primary_conninfo: {
       section: 'postgres.conf',
       key: 'primary_conninfo',
-      raw: '{{ postgres_cfg_primary_conninfo | default("") }}',
+      raw: '{{ postgres_cfg_primary_conninfo }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1586,7 +1700,8 @@
     _postgres_cfg_primary_slot_name: {
       section: 'postgres.conf',
       key: 'primary_slot_name',
-      raw: '{{ postgres_cfg_primary_slot_name | default("") }}',
+      raw: '{{ postgres_cfg_primary_slot_name }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -1596,7 +1711,8 @@
     _postgres_cfg_hot_standby: {
       section: 'postgres.conf',
       key: 'hot_standby',
-      raw: '{{ postgres_cfg_hot_standby | default(true) }}',
+      raw: '{{ postgres_cfg_hot_standby }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1606,7 +1722,8 @@
     _postgres_cfg_max_standby_archive_delay: {
       section: 'postgres.conf',
       key: 'max_standby_archive_delay',
-      raw: '{{ postgres_cfg_max_standby_archive_delay | default("30s") }}',
+      raw: '{{ postgres_cfg_max_standby_archive_delay }}',
+      default: '30s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1616,7 +1733,8 @@
     _postgres_cfg_max_standby_streaming_delay: {
       section: 'postgres.conf',
       key: 'max_standby_streaming_delay',
-      raw: '{{ postgres_cfg_max_standby_streaming_delay | default("30s") }}',
+      raw: '{{ postgres_cfg_max_standby_streaming_delay }}',
+      default: '30s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1626,7 +1744,8 @@
     _postgres_cfg_wal_receiver_create_temp_slot: {
       section: 'postgres.conf',
       key: 'wal_receiver_create_temp_slot',
-      raw: '{{ postgres_cfg_wal_receiver_create_temp_slot | default(false) }}',
+      raw: '{{ postgres_cfg_wal_receiver_create_temp_slot }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1636,7 +1755,8 @@
     _postgres_cfg_wal_receiver_status_interval: {
       section: 'postgres.conf',
       key: 'wal_receiver_status_interval',
-      raw: '{{ postgres_cfg_wal_receiver_status_interval | default("10s") }}',
+      raw: '{{ postgres_cfg_wal_receiver_status_interval }}',
+      default: '10s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1646,7 +1766,8 @@
     _postgres_cfg_hot_standby_feedback: {
       section: 'postgres.conf',
       key: 'hot_standby_feedback',
-      raw: '{{ postgres_cfg_hot_standby_feedback | default(false) }}',
+      raw: '{{ postgres_cfg_hot_standby_feedback }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1656,7 +1777,8 @@
     _postgres_cfg_wal_receiver_timeout: {
       section: 'postgres.conf',
       key: 'wal_receiver_timeout',
-      raw: '{{ postgres_cfg_wal_receiver_timeout | default("60s") }}',
+      raw: '{{ postgres_cfg_wal_receiver_timeout }}',
+      default: '60s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1666,7 +1788,8 @@
     _postgres_cfg_wal_retrieve_retry_interval: {
       section: 'postgres.conf',
       key: 'wal_retrieve_retry_interval',
-      raw: '{{ postgres_cfg_wal_retrieve_retry_interval | default("5s") }}',
+      raw: '{{ postgres_cfg_wal_retrieve_retry_interval }}',
+      default: '5s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1676,7 +1799,8 @@
     _postgres_cfg_recovery_min_apply_delay: {
       section: 'postgres.conf',
       key: 'recovery_min_apply_delay',
-      raw: '{{ postgres_cfg_recovery_min_apply_delay | default(0) }}',
+      raw: '{{ postgres_cfg_recovery_min_apply_delay }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -1686,7 +1810,8 @@
     _postgres_cfg_sync_replication_slots: {
       section: 'postgres.conf',
       key: 'sync_replication_slots',
-      raw: '{{ postgres_cfg_sync_replication_slots | default(false) }}',
+      raw: '{{ postgres_cfg_sync_replication_slots }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1696,7 +1821,8 @@
     _postgres_cfg_max_logical_replication_workers: {
       section: 'postgres.conf',
       key: 'max_logical_replication_workers',
-      raw: '{{ postgres_cfg_max_logical_replication_workers | default(4) }}',
+      raw: '{{ postgres_cfg_max_logical_replication_workers }}',
+      default: 4,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1706,7 +1832,8 @@
     _postgres_cfg_max_sync_workers_per_subscription: {
       section: 'postgres.conf',
       key: 'max_sync_workers_per_subscription',
-      raw: '{{ postgres_cfg_max_sync_workers_per_subscription | default(2) }}',
+      raw: '{{ postgres_cfg_max_sync_workers_per_subscription }}',
+      default: 2,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1716,10 +1843,8 @@
     _postgres_cfg_max_parallel_apply_workers_per_subscription: {
       section: 'postgres.conf',
       key: 'max_parallel_apply_workers_per_subscription',
-      raw: '{{
-          postgres_cfg_max_parallel_apply_workers_per_subscription |
-          default(2)
-        }}',
+      raw: '{{ postgres_cfg_max_parallel_apply_workers_per_subscription }}',
+      default: 2,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -1729,7 +1854,8 @@
     _postgres_cfg_enable_async_append: {
       section: 'postgres.conf',
       key: 'enable_async_append',
-      raw: '{{ postgres_cfg_enable_async_append | default(true) }}',
+      raw: '{{ postgres_cfg_enable_async_append }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1739,7 +1865,8 @@
     _postgres_cfg_enable_bitmapscan: {
       section: 'postgres.conf',
       key: 'enable_bitmapscan',
-      raw: '{{ postgres_cfg_enable_bitmapscan | default(true) }}',
+      raw: '{{ postgres_cfg_enable_bitmapscan }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1749,7 +1876,8 @@
     _postgres_cfg_enable_gathermerge: {
       section: 'postgres.conf',
       key: 'enable_gathermerge',
-      raw: '{{ postgres_cfg_enable_gathermerge | default(true) }}',
+      raw: '{{ postgres_cfg_enable_gathermerge }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1759,7 +1887,8 @@
     _postgres_cfg_enable_hashagg: {
       section: 'postgres.conf',
       key: 'enable_hashagg',
-      raw: '{{ postgres_cfg_enable_hashagg | default(true) }}',
+      raw: '{{ postgres_cfg_enable_hashagg }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1769,7 +1898,8 @@
     _postgres_cfg_enable_hashjoin: {
       section: 'postgres.conf',
       key: 'enable_hashjoin',
-      raw: '{{ postgres_cfg_enable_hashjoin | default(true) }}',
+      raw: '{{ postgres_cfg_enable_hashjoin }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1779,7 +1909,8 @@
     _postgres_cfg_enable_incremental_sort: {
       section: 'postgres.conf',
       key: 'enable_incremental_sort',
-      raw: '{{ postgres_cfg_enable_incremental_sort | default(true) }}',
+      raw: '{{ postgres_cfg_enable_incremental_sort }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1789,7 +1920,8 @@
     _postgres_cfg_enable_indexscan: {
       section: 'postgres.conf',
       key: 'enable_indexscan',
-      raw: '{{ postgres_cfg_enable_indexscan | default(true) }}',
+      raw: '{{ postgres_cfg_enable_indexscan }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1799,7 +1931,8 @@
     _postgres_cfg_enable_indexonlyscan: {
       section: 'postgres.conf',
       key: 'enable_indexonlyscan',
-      raw: '{{ postgres_cfg_enable_indexonlyscan | default(true) }}',
+      raw: '{{ postgres_cfg_enable_indexonlyscan }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1809,7 +1942,8 @@
     _postgres_cfg_enable_material: {
       section: 'postgres.conf',
       key: 'enable_material',
-      raw: '{{ postgres_cfg_enable_material | default(true) }}',
+      raw: '{{ postgres_cfg_enable_material }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1819,7 +1953,8 @@
     _postgres_cfg_enable_memoize: {
       section: 'postgres.conf',
       key: 'enable_memoize',
-      raw: '{{ postgres_cfg_enable_memoize | default(true) }}',
+      raw: '{{ postgres_cfg_enable_memoize }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1829,7 +1964,8 @@
     _postgres_cfg_enable_mergejoin: {
       section: 'postgres.conf',
       key: 'enable_mergejoin',
-      raw: '{{ postgres_cfg_enable_mergejoin | default(true) }}',
+      raw: '{{ postgres_cfg_enable_mergejoin }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1839,7 +1975,8 @@
     _postgres_cfg_enable_nestloop: {
       section: 'postgres.conf',
       key: 'enable_nestloop',
-      raw: '{{ postgres_cfg_enable_nestloop | default(true) }}',
+      raw: '{{ postgres_cfg_enable_nestloop }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1849,7 +1986,8 @@
     _postgres_cfg_enable_parallel_append: {
       section: 'postgres.conf',
       key: 'enable_parallel_append',
-      raw: '{{ postgres_cfg_enable_parallel_append | default(true) }}',
+      raw: '{{ postgres_cfg_enable_parallel_append }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1859,7 +1997,8 @@
     _postgres_cfg_enable_parallel_hash: {
       section: 'postgres.conf',
       key: 'enable_parallel_hash',
-      raw: '{{ postgres_cfg_enable_parallel_hash | default(true) }}',
+      raw: '{{ postgres_cfg_enable_parallel_hash }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1869,7 +2008,8 @@
     _postgres_cfg_enable_partition_pruning: {
       section: 'postgres.conf',
       key: 'enable_partition_pruning',
-      raw: '{{ postgres_cfg_enable_partition_pruning | default(true) }}',
+      raw: '{{ postgres_cfg_enable_partition_pruning }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1879,7 +2019,8 @@
     _postgres_cfg_enable_partitionwise_join: {
       section: 'postgres.conf',
       key: 'enable_partitionwise_join',
-      raw: '{{ postgres_cfg_enable_partitionwise_join | default(false) }}',
+      raw: '{{ postgres_cfg_enable_partitionwise_join }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1889,8 +2030,8 @@
     _postgres_cfg_enable_partitionwise_aggregate: {
       section: 'postgres.conf',
       key: 'enable_partitionwise_aggregate',
-      raw:
-        '{{ postgres_cfg_enable_partitionwise_aggregate | default(false) }}',
+      raw: '{{ postgres_cfg_enable_partitionwise_aggregate }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1900,7 +2041,8 @@
     _postgres_cfg_enable_presorted_aggregate: {
       section: 'postgres.conf',
       key: 'enable_presorted_aggregate',
-      raw: '{{ postgres_cfg_enable_presorted_aggregate | default(true) }}',
+      raw: '{{ postgres_cfg_enable_presorted_aggregate }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1910,7 +2052,8 @@
     _postgres_cfg_enable_seqscan: {
       section: 'postgres.conf',
       key: 'enable_seqscan',
-      raw: '{{ postgres_cfg_enable_seqscan | default(true) }}',
+      raw: '{{ postgres_cfg_enable_seqscan }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1920,7 +2063,8 @@
     _postgres_cfg_enable_sort: {
       section: 'postgres.conf',
       key: 'enable_sort',
-      raw: '{{ postgres_cfg_enable_sort | default(true) }}',
+      raw: '{{ postgres_cfg_enable_sort }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1930,7 +2074,8 @@
     _postgres_cfg_enable_tidscan: {
       section: 'postgres.conf',
       key: 'enable_tidscan',
-      raw: '{{ postgres_cfg_enable_tidscan | default(true) }}',
+      raw: '{{ postgres_cfg_enable_tidscan }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1940,7 +2085,8 @@
     _postgres_cfg_enable_group_by_reordering: {
       section: 'postgres.conf',
       key: 'enable_group_by_reordering',
-      raw: '{{ postgres_cfg_enable_group_by_reordering | default(true) }}',
+      raw: '{{ postgres_cfg_enable_group_by_reordering }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -1950,7 +2096,8 @@
     _postgres_cfg_seq_page_cost: {
       section: 'postgres.conf',
       key: 'seq_page_cost',
-      raw: '{{ postgres_cfg_seq_page_cost | default(1.0) }}',
+      raw: '{{ postgres_cfg_seq_page_cost }}',
+      default: 1.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -1960,7 +2107,8 @@
     _postgres_cfg_random_page_cost: {
       section: 'postgres.conf',
       key: 'random_page_cost',
-      raw: '{{ postgres_cfg_random_page_cost | default(4.0) }}',
+      raw: '{{ postgres_cfg_random_page_cost }}',
+      default: 4.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -1970,7 +2118,8 @@
     _postgres_cfg_cpu_tuple_cost: {
       section: 'postgres.conf',
       key: 'cpu_tuple_cost',
-      raw: '{{ postgres_cfg_cpu_tuple_cost | default(0.01) }}',
+      raw: '{{ postgres_cfg_cpu_tuple_cost }}',
+      default: 0.01,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -1980,7 +2129,8 @@
     _postgres_cfg_cpu_index_tuple_cost: {
       section: 'postgres.conf',
       key: 'cpu_index_tuple_cost',
-      raw: '{{ postgres_cfg_cpu_index_tuple_cost | default(0.005) }}',
+      raw: '{{ postgres_cfg_cpu_index_tuple_cost }}',
+      default: 0.005,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -1990,7 +2140,8 @@
     _postgres_cfg_cpu_operator_cost: {
       section: 'postgres.conf',
       key: 'cpu_operator_cost',
-      raw: '{{ postgres_cfg_cpu_operator_cost | default(0.0025) }}',
+      raw: '{{ postgres_cfg_cpu_operator_cost }}',
+      default: 0.0025,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2000,7 +2151,8 @@
     _postgres_cfg_parallel_setup_cost: {
       section: 'postgres.conf',
       key: 'parallel_setup_cost',
-      raw: '{{ postgres_cfg_parallel_setup_cost | default(1000.0) }}',
+      raw: '{{ postgres_cfg_parallel_setup_cost }}',
+      default: 1000.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2010,7 +2162,8 @@
     _postgres_cfg_parallel_tuple_cost: {
       section: 'postgres.conf',
       key: 'parallel_tuple_cost',
-      raw: '{{ postgres_cfg_parallel_tuple_cost | default(0.1) }}',
+      raw: '{{ postgres_cfg_parallel_tuple_cost }}',
+      default: 0.1,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2020,7 +2173,8 @@
     _postgres_cfg_min_parallel_table_scan_size: {
       section: 'postgres.conf',
       key: 'min_parallel_table_scan_size',
-      raw: '{{ postgres_cfg_min_parallel_table_scan_size | default("8MB") }}',
+      raw: '{{ postgres_cfg_min_parallel_table_scan_size }}',
+      default: '8MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2030,8 +2184,8 @@
     _postgres_cfg_min_parallel_index_scan_size: {
       section: 'postgres.conf',
       key: 'min_parallel_index_scan_size',
-      raw:
-        '{{ postgres_cfg_min_parallel_index_scan_size | default("512kB") }}',
+      raw: '{{ postgres_cfg_min_parallel_index_scan_size }}',
+      default: '512kB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2041,7 +2195,8 @@
     _postgres_cfg_effective_cache_size: {
       section: 'postgres.conf',
       key: 'effective_cache_size',
-      raw: '{{ postgres_cfg_effective_cache_size | default("4GB") }}',
+      raw: '{{ postgres_cfg_effective_cache_size }}',
+      default: '4GB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2051,7 +2206,8 @@
     _postgres_cfg_jit_above_cost: {
       section: 'postgres.conf',
       key: 'jit_above_cost',
-      raw: '{{ postgres_cfg_jit_above_cost | default(100000) }}',
+      raw: '{{ postgres_cfg_jit_above_cost }}',
+      default: 100000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2061,7 +2217,8 @@
     _postgres_cfg_jit_inline_above_cost: {
       section: 'postgres.conf',
       key: 'jit_inline_above_cost',
-      raw: '{{ postgres_cfg_jit_inline_above_cost | default(500000) }}',
+      raw: '{{ postgres_cfg_jit_inline_above_cost }}',
+      default: 500000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2071,7 +2228,8 @@
     _postgres_cfg_jit_optimize_above_cost: {
       section: 'postgres.conf',
       key: 'jit_optimize_above_cost',
-      raw: '{{ postgres_cfg_jit_optimize_above_cost | default(500000) }}',
+      raw: '{{ postgres_cfg_jit_optimize_above_cost }}',
+      default: 500000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2081,7 +2239,8 @@
     _postgres_cfg_geqo: {
       section: 'postgres.conf',
       key: 'geqo',
-      raw: '{{ postgres_cfg_geqo | default(true) }}',
+      raw: '{{ postgres_cfg_geqo }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2091,7 +2250,8 @@
     _postgres_cfg_geqo_threshold: {
       section: 'postgres.conf',
       key: 'geqo_threshold',
-      raw: '{{ postgres_cfg_geqo_threshold | default(12) }}',
+      raw: '{{ postgres_cfg_geqo_threshold }}',
+      default: 12,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2101,7 +2261,8 @@
     _postgres_cfg_geqo_effort: {
       section: 'postgres.conf',
       key: 'geqo_effort',
-      raw: '{{ postgres_cfg_geqo_effort | default(5) }}',
+      raw: '{{ postgres_cfg_geqo_effort }}',
+      default: 5,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2111,7 +2272,8 @@
     _postgres_cfg_geqo_pool_size: {
       section: 'postgres.conf',
       key: 'geqo_pool_size',
-      raw: '{{ postgres_cfg_geqo_pool_size | default(0) }}',
+      raw: '{{ postgres_cfg_geqo_pool_size }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2121,7 +2283,8 @@
     _postgres_cfg_geqo_generations: {
       section: 'postgres.conf',
       key: 'geqo_generations',
-      raw: '{{ postgres_cfg_geqo_generations | default(0) }}',
+      raw: '{{ postgres_cfg_geqo_generations }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2131,7 +2294,8 @@
     _postgres_cfg_geqo_selection_bias: {
       section: 'postgres.conf',
       key: 'geqo_selection_bias',
-      raw: '{{ postgres_cfg_geqo_selection_bias | default(2.0) }}',
+      raw: '{{ postgres_cfg_geqo_selection_bias }}',
+      default: 2.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2141,7 +2305,8 @@
     _postgres_cfg_geqo_seed: {
       section: 'postgres.conf',
       key: 'geqo_seed',
-      raw: '{{ postgres_cfg_geqo_seed | default(0.0) }}',
+      raw: '{{ postgres_cfg_geqo_seed }}',
+      default: 0.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2151,7 +2316,8 @@
     _postgres_cfg_default_statistics_target: {
       section: 'postgres.conf',
       key: 'default_statistics_target',
-      raw: '{{ postgres_cfg_default_statistics_target | default(100) }}',
+      raw: '{{ postgres_cfg_default_statistics_target }}',
+      default: 100,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2161,7 +2327,8 @@
     _postgres_cfg_constraint_exclusion: {
       section: 'postgres.conf',
       key: 'constraint_exclusion',
-      raw: '{{ postgres_cfg_constraint_exclusion | default("partition") }}',
+      raw: '{{ postgres_cfg_constraint_exclusion }}',
+      default: 'partition',
       hint: 'str or bool',
       added: '0.0.0',
       sensitive: false,
@@ -2171,7 +2338,8 @@
     _postgres_cfg_cursor_tuple_fraction: {
       section: 'postgres.conf',
       key: 'cursor_tuple_fraction',
-      raw: '{{ postgres_cfg_cursor_tuple_fraction | default(0.1) }}',
+      raw: '{{ postgres_cfg_cursor_tuple_fraction }}',
+      default: 0.1,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2181,7 +2349,8 @@
     _postgres_cfg_from_collapse_limit: {
       section: 'postgres.conf',
       key: 'from_collapse_limit',
-      raw: '{{ postgres_cfg_from_collapse_limit | default(8) }}',
+      raw: '{{ postgres_cfg_from_collapse_limit }}',
+      default: 8,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2191,7 +2360,8 @@
     _postgres_cfg_jit: {
       section: 'postgres.conf',
       key: 'jit',
-      raw: '{{ postgres_cfg_jit | default(true) }}',
+      raw: '{{ postgres_cfg_jit }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2201,7 +2371,8 @@
     _postgres_cfg_join_collapse_limit: {
       section: 'postgres.conf',
       key: 'join_collapse_limit',
-      raw: '{{ postgres_cfg_join_collapse_limit | default(8) }}',
+      raw: '{{ postgres_cfg_join_collapse_limit }}',
+      default: 8,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2211,7 +2382,8 @@
     _postgres_cfg_plan_cache_mode: {
       section: 'postgres.conf',
       key: 'plan_cache_mode',
-      raw: '{{ postgres_cfg_plan_cache_mode | default("auto") }}',
+      raw: '{{ postgres_cfg_plan_cache_mode }}',
+      default: 'auto',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2221,7 +2393,8 @@
     _postgres_cfg_recursive_worktable_factor: {
       section: 'postgres.conf',
       key: 'recursive_worktable_factor',
-      raw: '{{ postgres_cfg_recursive_worktable_factor | default(10.0) }}',
+      raw: '{{ postgres_cfg_recursive_worktable_factor }}',
+      default: 10.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2231,10 +2404,9 @@
     _postgres_cfg_log_destination: {
       section: 'postgres.conf',
       key: 'log_destination',
-      raw: '{{ postgres_cfg_log_destination | default(["stderr"]) }}',
-      parsed: '{{
-          postgres_cfg_log_destination | default(["stderr"]) | join(",")
-        }}',
+      raw: '{{ postgres_cfg_log_destination }}',
+      data: '{{ postgres_cfg_log_destination | join(",") }}',
+      default: ['stderr'],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -2244,7 +2416,8 @@
     _postgres_cfg_logging_collector: {
       section: 'postgres.conf',
       key: 'logging_collector',
-      raw: '{{ postgres_cfg_logging_collector | default(false) }}',
+      raw: '{{ postgres_cfg_logging_collector }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2254,7 +2427,8 @@
     _postgres_cfg_log_directory: {
       section: 'postgres.conf',
       key: 'log_directory',
-      raw: '{{ postgres_cfg_log_directory | default("log") }}',
+      raw: '{{ postgres_cfg_log_directory }}',
+      default: 'log',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2264,10 +2438,8 @@
     _postgres_cfg_log_filename: {
       section: 'postgres.conf',
       key: 'log_filename',
-      raw: '{{
-          postgres_cfg_log_filename |
-          default("postgresql-%Y-%m-%d_%H%M%S.log")
-        }}',
+      raw: '{{ postgres_cfg_log_filename }}',
+      default: 'postgresql-%Y-%m-%d_%H%M%S.log',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2277,7 +2449,8 @@
     _postgres_cfg_log_file_mode: {
       section: 'postgres.conf',
       key: 'log_file_mode',
-      raw: '{{ postgres_cfg_log_file_mode | default("0600") }}',
+      raw: '{{ postgres_cfg_log_file_mode }}',
+      default: '0600',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2287,7 +2460,8 @@
     _postgres_cfg_log_rotation_age: {
       section: 'postgres.conf',
       key: 'log_rotation_age',
-      raw: '{{ postgres_cfg_log_rotation_age | default("1d") }}',
+      raw: '{{ postgres_cfg_log_rotation_age }}',
+      default: '1d',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2297,7 +2471,8 @@
     _postgres_cfg_log_rotation_size: {
       section: 'postgres.conf',
       key: 'log_rotation_size',
-      raw: '{{ postgres_cfg_log_rotation_size | default("10MB") }}',
+      raw: '{{ postgres_cfg_log_rotation_size }}',
+      default: '10MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2307,7 +2482,8 @@
     _postgres_cfg_log_truncate_on_rotation: {
       section: 'postgres.conf',
       key: 'log_truncate_on_rotation',
-      raw: '{{ postgres_cfg_log_truncate_on_rotation | default(false) }}',
+      raw: '{{ postgres_cfg_log_truncate_on_rotation }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2317,7 +2493,8 @@
     _postgres_cfg_syslog_facility: {
       section: 'postgres.conf',
       key: 'syslog_facility',
-      raw: '{{ postgres_cfg_syslog_facility | default("LOCAL0") }}',
+      raw: '{{ postgres_cfg_syslog_facility }}',
+      default: 'LOCAL0',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2327,7 +2504,8 @@
     _postgres_cfg_syslog_ident: {
       section: 'postgres.conf',
       key: 'syslog_ident',
-      raw: '{{ postgres_cfg_syslog_ident | default("postgres") }}',
+      raw: '{{ postgres_cfg_syslog_ident }}',
+      default: 'postgres',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2337,7 +2515,8 @@
     _postgres_cfg_syslog_sequence_numbers: {
       section: 'postgres.conf',
       key: 'syslog_sequence_numbers',
-      raw: '{{ postgres_cfg_syslog_sequence_numbers | default(true) }}',
+      raw: '{{ postgres_cfg_syslog_sequence_numbers }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2347,7 +2526,8 @@
     _postgres_cfg_syslog_split_messages: {
       section: 'postgres.conf',
       key: 'syslog_split_messages',
-      raw: '{{ postgres_cfg_syslog_split_messages | default(true) }}',
+      raw: '{{ postgres_cfg_syslog_split_messages }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2357,7 +2537,8 @@
     _postgres_cfg_event_source: {
       section: 'postgres.conf',
       key: 'event_source',
-      raw: '{{ postgres_cfg_event_source | default("PostgreSQL") }}',
+      raw: '{{ postgres_cfg_event_source }}',
+      default: 'PostgreSQL',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2367,7 +2548,8 @@
     _postgres_cfg_log_min_messages: {
       section: 'postgres.conf',
       key: 'log_min_messages',
-      raw: '{{ postgres_cfg_log_min_messages | default("warning") }}',
+      raw: '{{ postgres_cfg_log_min_messages }}',
+      default: 'warning',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2377,7 +2559,8 @@
     _postgres_cfg_log_min_error_statement: {
       section: 'postgres.conf',
       key: 'log_min_error_statement',
-      raw: '{{ postgres_cfg_log_min_error_statement | default("error") }}',
+      raw: '{{ postgres_cfg_log_min_error_statement }}',
+      default: 'error',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2387,7 +2570,8 @@
     _postgres_cfg_log_min_duration_statement: {
       section: 'postgres.conf',
       key: 'log_min_duration_statement',
-      raw: '{{ postgres_cfg_log_min_duration_statement | default(-1) }}',
+      raw: '{{ postgres_cfg_log_min_duration_statement }}',
+      default: -1,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2397,7 +2581,8 @@
     _postgres_cfg_log_min_duration_sample: {
       section: 'postgres.conf',
       key: 'log_min_duration_sample',
-      raw: '{{ postgres_cfg_log_min_duration_sample | default(-1) }}',
+      raw: '{{ postgres_cfg_log_min_duration_sample }}',
+      default: -1,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2407,7 +2592,8 @@
     _postgres_cfg_log_statement_sample_rate: {
       section: 'postgres.conf',
       key: 'log_statement_sample_rate',
-      raw: '{{ postgres_cfg_log_statement_sample_rate | default(1.0) }}',
+      raw: '{{ postgres_cfg_log_statement_sample_rate }}',
+      default: 1.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2417,7 +2603,8 @@
     _postgres_cfg_log_transaction_sample_rate: {
       section: 'postgres.conf',
       key: 'log_transaction_sample_rate',
-      raw: '{{ postgres_cfg_log_transaction_sample_rate | default(0.0) }}',
+      raw: '{{ postgres_cfg_log_transaction_sample_rate }}',
+      default: 0.0,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2427,7 +2614,8 @@
     _postgres_cfg_log_startup_progress_interval: {
       section: 'postgres.conf',
       key: 'log_startup_progress_interval',
-      raw: '{{ postgres_cfg_log_startup_progress_interval | default("10s") }}',
+      raw: '{{ postgres_cfg_log_startup_progress_interval }}',
+      default: '10s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2437,7 +2625,8 @@
     _postgres_cfg_debug_print_parse: {
       section: 'postgres.conf',
       key: 'debug_print_parse',
-      raw: '{{ postgres_cfg_debug_print_parse | default(false) }}',
+      raw: '{{ postgres_cfg_debug_print_parse }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2447,7 +2636,8 @@
     _postgres_cfg_debug_print_rewritten: {
       section: 'postgres.conf',
       key: 'debug_print_rewritten',
-      raw: '{{ postgres_cfg_debug_print_rewritten | default(false) }}',
+      raw: '{{ postgres_cfg_debug_print_rewritten }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2457,7 +2647,8 @@
     _postgres_cfg_debug_print_plan: {
       section: 'postgres.conf',
       key: 'debug_print_plan',
-      raw: '{{ postgres_cfg_debug_print_plan | default(false) }}',
+      raw: '{{ postgres_cfg_debug_print_plan }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2467,7 +2658,8 @@
     _postgres_cfg_debug_pretty_print: {
       section: 'postgres.conf',
       key: 'debug_pretty_print',
-      raw: '{{ postgres_cfg_debug_pretty_print | default(true) }}',
+      raw: '{{ postgres_cfg_debug_pretty_print }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2477,7 +2669,8 @@
     _postgres_cfg_log_autovacuum_min_duration: {
       section: 'postgres.conf',
       key: 'log_autovacuum_min_duration',
-      raw: '{{ postgres_cfg_log_autovacuum_min_duration | default("10min") }}',
+      raw: '{{ postgres_cfg_log_autovacuum_min_duration }}',
+      default: '10min',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2487,7 +2680,8 @@
     _postgres_cfg_log_checkpoints: {
       section: 'postgres.conf',
       key: 'log_checkpoints',
-      raw: '{{ postgres_cfg_log_checkpoints | default(true) }}',
+      raw: '{{ postgres_cfg_log_checkpoints }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2497,7 +2691,8 @@
     _postgres_cfg_log_connections: {
       section: 'postgres.conf',
       key: 'log_connections',
-      raw: '{{ postgres_cfg_log_connections | default(false) }}',
+      raw: '{{ postgres_cfg_log_connections }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2507,7 +2702,8 @@
     _postgres_cfg_log_disconnections: {
       section: 'postgres.conf',
       key: 'log_disconnections',
-      raw: '{{ postgres_cfg_log_disconnections | default(false) }}',
+      raw: '{{ postgres_cfg_log_disconnections }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2517,7 +2713,8 @@
     _postgres_cfg_log_duration: {
       section: 'postgres.conf',
       key: 'log_duration',
-      raw: '{{ postgres_cfg_log_duration | default(false) }}',
+      raw: '{{ postgres_cfg_log_duration }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2527,7 +2724,8 @@
     _postgres_cfg_log_error_verbosity: {
       section: 'postgres.conf',
       key: 'log_error_verbosity',
-      raw: '{{ postgres_cfg_log_error_verbosity | default("default") }}',
+      raw: '{{ postgres_cfg_log_error_verbosity }}',
+      default: 'default',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2537,7 +2735,8 @@
     _postgres_cfg_log_hostname: {
       section: 'postgres.conf',
       key: 'log_hostname',
-      raw: '{{ postgres_cfg_log_hostname | default(false) }}',
+      raw: '{{ postgres_cfg_log_hostname }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2547,7 +2746,8 @@
     _postgres_cfg_log_line_prefix: {
       section: 'postgres.conf',
       key: 'log_line_prefix',
-      raw: '{{ postgres_cfg_log_line_prefix | default("%m [%p] %q%u@%d ") }}',
+      raw: '{{ postgres_cfg_log_line_prefix }}',
+      default: '%m [%p] %q%u@%d ',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2557,7 +2757,8 @@
     _postgres_cfg_log_lock_waits: {
       section: 'postgres.conf',
       key: 'log_lock_waits',
-      raw: '{{ postgres_cfg_log_lock_waits | default(false) }}',
+      raw: '{{ postgres_cfg_log_lock_waits }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2567,7 +2768,8 @@
     _postgres_cfg_log_recovery_conflict_waits: {
       section: 'postgres.conf',
       key: 'log_recovery_conflict_waits',
-      raw: '{{ postgres_cfg_log_recovery_conflict_waits | default(false) }}',
+      raw: '{{ postgres_cfg_log_recovery_conflict_waits }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2577,7 +2779,8 @@
     _postgres_cfg_log_parameter_max_length: {
       section: 'postgres.conf',
       key: 'log_parameter_max_length',
-      raw: '{{ postgres_cfg_log_parameter_max_length | default(-1) }}',
+      raw: '{{ postgres_cfg_log_parameter_max_length }}',
+      default: -1,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2587,7 +2790,8 @@
     _postgres_cfg_log_parameter_max_length_on_error: {
       section: 'postgres.conf',
       key: 'log_parameter_max_length_on_error',
-      raw: '{{ postgres_cfg_log_parameter_max_length_on_error | default(0) }}',
+      raw: '{{ postgres_cfg_log_parameter_max_length_on_error }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2597,7 +2801,8 @@
     _postgres_cfg_log_statement: {
       section: 'postgres.conf',
       key: 'log_statement',
-      raw: '{{ postgres_cfg_log_statement | default("none") }}',
+      raw: '{{ postgres_cfg_log_statement }}',
+      default: 'none',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2607,7 +2812,8 @@
     _postgres_cfg_log_replication_commands: {
       section: 'postgres.conf',
       key: 'log_replication_commands',
-      raw: '{{ postgres_cfg_log_replication_commands | default(false) }}',
+      raw: '{{ postgres_cfg_log_replication_commands }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2617,7 +2823,8 @@
     _postgres_cfg_log_temp_files: {
       section: 'postgres.conf',
       key: 'log_temp_files',
-      raw: '{{ postgres_cfg_log_temp_files | default(-1) }}',
+      raw: '{{ postgres_cfg_log_temp_files }}',
+      default: -1,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2627,7 +2834,8 @@
     _postgres_cfg_log_timezone: {
       section: 'postgres.conf',
       key: 'log_timezone',
-      raw: '{{ postgres_cfg_log_timezone | default("Etc/UTC") }}',
+      raw: '{{ postgres_cfg_log_timezone }}',
+      default: 'Etc/UTC',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2637,7 +2845,8 @@
     _postgres_cfg_cluster_name: {
       section: 'postgres.conf',
       key: 'cluster_name',
-      raw: '{{ postgres_cfg_cluster_name | default("17/main") }}',
+      raw: '{{ postgres_cfg_cluster_name }}',
+      default: '17/main',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2647,7 +2856,8 @@
     _postgres_cfg_update_process_title: {
       section: 'postgres.conf',
       key: 'update_process_title',
-      raw: '{{ postgres_cfg_update_process_title | default(true) }}',
+      raw: '{{ postgres_cfg_update_process_title }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2657,7 +2867,8 @@
     _postgres_cfg_track_activities: {
       section: 'postgres.conf',
       key: 'track_activities',
-      raw: '{{ postgres_cfg_track_activities | default(true) }}',
+      raw: '{{ postgres_cfg_track_activities }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2667,7 +2878,8 @@
     _postgres_cfg_track_activity_query_size: {
       section: 'postgres.conf',
       key: 'track_activity_query_size',
-      raw: '{{ postgres_cfg_track_activity_query_size | default(1024) }}',
+      raw: '{{ postgres_cfg_track_activity_query_size }}',
+      default: 1024,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2677,7 +2889,8 @@
     _postgres_cfg_track_counts: {
       section: 'postgres.conf',
       key: 'track_counts',
-      raw: '{{ postgres_cfg_track_counts | default(true) }}',
+      raw: '{{ postgres_cfg_track_counts }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2687,7 +2900,8 @@
     _postgres_cfg_track_io_timing: {
       section: 'postgres.conf',
       key: 'track_io_timing',
-      raw: '{{ postgres_cfg_track_io_timing | default(false) }}',
+      raw: '{{ postgres_cfg_track_io_timing }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2697,7 +2911,8 @@
     _postgres_cfg_track_wal_io_timing: {
       section: 'postgres.conf',
       key: 'track_wal_io_timing',
-      raw: '{{ postgres_cfg_track_wal_io_timing | default(false) }}',
+      raw: '{{ postgres_cfg_track_wal_io_timing }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2707,7 +2922,8 @@
     _postgres_cfg_track_functions: {
       section: 'postgres.conf',
       key: 'track_functions',
-      raw: '{{ postgres_cfg_track_functions | default("none") }}',
+      raw: '{{ postgres_cfg_track_functions }}',
+      default: 'none',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2717,7 +2933,8 @@
     _postgres_cfg_stats_fetch_consistency: {
       section: 'postgres.conf',
       key: 'stats_fetch_consistency',
-      raw: '{{ postgres_cfg_stats_fetch_consistency | default("cache") }}',
+      raw: '{{ postgres_cfg_stats_fetch_consistency }}',
+      default: 'cache',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2727,7 +2944,8 @@
     _postgres_cfg_compute_query_id: {
       section: 'postgres.conf',
       key: 'compute_query_id',
-      raw: '{{ postgres_cfg_compute_query_id | default("auto") }}',
+      raw: '{{ postgres_cfg_compute_query_id }}',
+      default: 'auto',
       hint: 'str or bool',
       added: '0.0.0',
       sensitive: false,
@@ -2737,7 +2955,8 @@
     _postgres_cfg_log_statement_stats: {
       section: 'postgres.conf',
       key: 'log_statement_stats',
-      raw: '{{ postgres_cfg_log_statement_stats | default(false) }}',
+      raw: '{{ postgres_cfg_log_statement_stats }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2747,7 +2966,8 @@
     _postgres_cfg_log_parser_stats: {
       section: 'postgres.conf',
       key: 'log_parser_stats',
-      raw: '{{ postgres_cfg_log_parser_stats | default(false) }}',
+      raw: '{{ postgres_cfg_log_parser_stats }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2757,7 +2977,8 @@
     _postgres_cfg_log_planner_stats: {
       section: 'postgres.conf',
       key: 'log_planner_stats',
-      raw: '{{ postgres_cfg_log_planner_stats | default(false) }}',
+      raw: '{{ postgres_cfg_log_planner_stats }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2767,7 +2988,8 @@
     _postgres_cfg_log_executor_stats: {
       section: 'postgres.conf',
       key: 'log_executor_stats',
-      raw: '{{ postgres_cfg_log_executor_stats | default(false) }}',
+      raw: '{{ postgres_cfg_log_executor_stats }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2777,7 +2999,8 @@
     _postgres_cfg_autovacuum: {
       section: 'postgres.conf',
       key: 'autovacuum',
-      raw: '{{ postgres_cfg_autovacuum | default(true) }}',
+      raw: '{{ postgres_cfg_autovacuum }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2787,7 +3010,8 @@
     _postgres_cfg_autovacuum_max_workers: {
       section: 'postgres.conf',
       key: 'autovacuum_max_workers',
-      raw: '{{ postgres_cfg_autovacuum_max_workers | default(3) }}',
+      raw: '{{ postgres_cfg_autovacuum_max_workers }}',
+      default: 3,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2797,7 +3021,8 @@
     _postgres_cfg_autovacuum_naptime: {
       section: 'postgres.conf',
       key: 'autovacuum_naptime',
-      raw: '{{ postgres_cfg_autovacuum_naptime | default("1min") }}',
+      raw: '{{ postgres_cfg_autovacuum_naptime }}',
+      default: '1min',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2807,7 +3032,8 @@
     _postgres_cfg_autovacuum_vacuum_threshold: {
       section: 'postgres.conf',
       key: 'autovacuum_vacuum_threshold',
-      raw: '{{ postgres_cfg_autovacuum_vacuum_threshold | default(50) }}',
+      raw: '{{ postgres_cfg_autovacuum_vacuum_threshold }}',
+      default: 50,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2817,9 +3043,8 @@
     _postgres_cfg_autovacuum_vacuum_insert_threshold: {
       section: 'postgres.conf',
       key: 'autovacuum_vacuum_insert_threshold',
-      raw: '{{
-          postgres_cfg_autovacuum_vacuum_insert_threshold | default(1000)
-        }}',
+      raw: '{{ postgres_cfg_autovacuum_vacuum_insert_threshold }}',
+      default: 1000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2829,7 +3054,8 @@
     _postgres_cfg_autovacuum_analyze_threshold: {
       section: 'postgres.conf',
       key: 'autovacuum_analyze_threshold',
-      raw: '{{ postgres_cfg_autovacuum_analyze_threshold | default(50) }}',
+      raw: '{{ postgres_cfg_autovacuum_analyze_threshold }}',
+      default: 50,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2839,7 +3065,8 @@
     _postgres_cfg_autovacuum_vacuum_scale_factor: {
       section: 'postgres.conf',
       key: 'autovacuum_vacuum_scale_factor',
-      raw: '{{ postgres_cfg_autovacuum_vacuum_scale_factor | default(0.2) }}',
+      raw: '{{ postgres_cfg_autovacuum_vacuum_scale_factor }}',
+      default: 0.2,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2849,10 +3076,8 @@
     _postgres_cfg_autovacuum_vacuum_insert_scale_factor: {
       section: 'postgres.conf',
       key: 'autovacuum_vacuum_insert_scale_factor',
-      raw: '{{
-          postgres_cfg_autovacuum_vacuum_insert_scale_factor |
-          default(0.2)
-        }}',
+      raw: '{{ postgres_cfg_autovacuum_vacuum_insert_scale_factor }}',
+      default: 0.2,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2862,7 +3087,8 @@
     _postgres_cfg_autovacuum_analyze_scale_factor: {
       section: 'postgres.conf',
       key: 'autovacuum_analyze_scale_factor',
-      raw: '{{ postgres_cfg_autovacuum_analyze_scale_factor | default(0.1) }}',
+      raw: '{{ postgres_cfg_autovacuum_analyze_scale_factor }}',
+      default: 0.1,
       hint: 'float',
       added: '0.0.0',
       sensitive: false,
@@ -2872,7 +3098,8 @@
     _postgres_cfg_autovacuum_freeze_max_age: {
       section: 'postgres.conf',
       key: 'autovacuum_freeze_max_age',
-      raw: '{{ postgres_cfg_autovacuum_freeze_max_age | default(200000000) }}',
+      raw: '{{ postgres_cfg_autovacuum_freeze_max_age }}',
+      default: 200000000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2882,10 +3109,8 @@
     _postgres_cfg_autovacuum_multixact_freeze_max_age: {
       section: 'postgres.conf',
       key: 'autovacuum_multixact_freeze_max_age',
-      raw: '{{
-          postgres_cfg_autovacuum_multixact_freeze_max_age |
-          default(400000000)
-        }}',
+      raw: '{{ postgres_cfg_autovacuum_multixact_freeze_max_age }}',
+      default: 400000000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2895,7 +3120,8 @@
     _postgres_cfg_autovacuum_vacuum_cost_delay: {
       section: 'postgres.conf',
       key: 'autovacuum_vacuum_cost_delay',
-      raw: '{{ postgres_cfg_autovacuum_vacuum_cost_delay | default("2ms") }}',
+      raw: '{{ postgres_cfg_autovacuum_vacuum_cost_delay }}',
+      default: '2ms',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -2905,7 +3131,8 @@
     _postgres_cfg_autovacuum_vacuum_cost_limit: {
       section: 'postgres.conf',
       key: 'autovacuum_vacuum_cost_limit',
-      raw: '{{ postgres_cfg_autovacuum_vacuum_cost_limit | default(-1) }}',
+      raw: '{{ postgres_cfg_autovacuum_vacuum_cost_limit }}',
+      default: -1,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -2915,7 +3142,8 @@
     _postgres_cfg_client_min_messages: {
       section: 'postgres.conf',
       key: 'client_min_messages',
-      raw: '{{ postgres_cfg_client_min_messages | default("notice") }}',
+      raw: '{{ postgres_cfg_client_min_messages }}',
+      default: 'notice',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2925,8 +3153,9 @@
     _postgres_cfg_search_path: {
       section: 'postgres.conf',
       key: 'search_path',
-      raw: '{{ postgres_cfg_search_path }}',  # Escaped default value.
-      parsed: '{{ postgres_cfg_search_path | join(",") }}',
+      raw: '{{ postgres_cfg_search_path }}',
+      data: '{{ postgres_cfg_search_path | join(",") }}',
+      default: ['"$user"', 'public'],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -2936,7 +3165,8 @@
     _postgres_cfg_row_security: {
       section: 'postgres.conf',
       key: 'row_security',
-      raw: '{{ postgres_cfg_row_security | default(true) }}',
+      raw: '{{ postgres_cfg_row_security }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2946,7 +3176,8 @@
     _postgres_cfg_default_table_access_method: {
       section: 'postgres.conf',
       key: 'default_table_access_method',
-      raw: '{{ postgres_cfg_default_table_access_method | default("heap") }}',
+      raw: '{{ postgres_cfg_default_table_access_method }}',
+      default: 'heap',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2956,7 +3187,8 @@
     _postgres_cfg_default_tablespace: {
       section: 'postgres.conf',
       key: 'default_tablespace',
-      raw: '{{ postgres_cfg_default_tablespace | default("") }}',
+      raw: '{{ postgres_cfg_default_tablespace }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2966,7 +3198,8 @@
     _postgres_cfg_default_toast_compression: {
       section: 'postgres.conf',
       key: 'default_toast_compression',
-      raw: '{{ postgres_cfg_default_toast_compression | default("pglz") }}',
+      raw: '{{ postgres_cfg_default_toast_compression }}',
+      default: 'pglz',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2976,7 +3209,8 @@
     _postgres_cfg_temp_tablespaces: {
       section: 'postgres.conf',
       key: 'temp_tablespaces',
-      raw: '{{ postgres_cfg_temp_tablespaces | default("") }}',
+      raw: '{{ postgres_cfg_temp_tablespaces }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -2986,7 +3220,8 @@
     _postgres_cfg_check_function_bodies: {
       section: 'postgres.conf',
       key: 'check_function_bodies',
-      raw: '{{ postgres_cfg_check_function_bodies | default(true) }}',
+      raw: '{{ postgres_cfg_check_function_bodies }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -2996,10 +3231,8 @@
     _postgres_cfg_default_transaction_isolation: {
       section: 'postgres.conf',
       key: 'default_transaction_isolation',
-      raw: '{{
-          postgres_cfg_default_transaction_isolation |
-          default("read committed")
-        }}',
+      raw: '{{ postgres_cfg_default_transaction_isolation }}',
+      default: 'read committed',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3009,7 +3242,8 @@
     _postgres_cfg_default_transaction_read_only: {
       section: 'postgres.conf',
       key: 'default_transaction_read_only',
-      raw: '{{ postgres_cfg_default_transaction_read_only | default(false) }}',
+      raw: '{{ postgres_cfg_default_transaction_read_only }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3019,8 +3253,8 @@
     _postgres_cfg_default_transaction_deferrable: {
       section: 'postgres.conf',
       key: 'default_transaction_deferrable',
-      raw:
-        '{{ postgres_cfg_default_transaction_deferrable | default(false) }}',
+      raw: '{{ postgres_cfg_default_transaction_deferrable }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3030,7 +3264,8 @@
     _postgres_cfg_session_replication_role: {
       section: 'postgres.conf',
       key: 'session_replication_role',
-      raw: '{{ postgres_cfg_session_replication_role | default("origin") }}',
+      raw: '{{ postgres_cfg_session_replication_role }}',
+      default: 'origin',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3040,7 +3275,8 @@
     _postgres_cfg_statement_timeout: {
       section: 'postgres.conf',
       key: 'statement_timeout',
-      raw: '{{ postgres_cfg_statement_timeout | default(0) }}',
+      raw: '{{ postgres_cfg_statement_timeout }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -3050,7 +3286,8 @@
     _postgres_cfg_transaction_timeout: {
       section: 'postgres.conf',
       key: 'transaction_timeout',
-      raw: '{{ postgres_cfg_transaction_timeout | default(0) }}',
+      raw: '{{ postgres_cfg_transaction_timeout }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -3060,7 +3297,8 @@
     _postgres_cfg_lock_timeout: {
       section: 'postgres.conf',
       key: 'lock_timeout',
-      raw: '{{ postgres_cfg_lock_timeout | default(0) }}',
+      raw: '{{ postgres_cfg_lock_timeout }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -3070,8 +3308,8 @@
     _postgres_cfg_idle_in_transaction_session_timeout: {
       section: 'postgres.conf',
       key: 'idle_in_transaction_session_timeout',
-      raw:
-        '{{ postgres_cfg_idle_in_transaction_session_timeout | default(0) }}',
+      raw: '{{ postgres_cfg_idle_in_transaction_session_timeout }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -3081,7 +3319,8 @@
     _postgres_cfg_idle_session_timeout: {
       section: 'postgres.conf',
       key: 'idle_session_timeout',
-      raw: '{{ postgres_cfg_idle_session_timeout | default(0) }}',
+      raw: '{{ postgres_cfg_idle_session_timeout }}',
+      default: 0,
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -3091,7 +3330,8 @@
     _postgres_cfg_vacuum_freeze_table_age: {
       section: 'postgres.conf',
       key: 'vacuum_freeze_table_age',
-      raw: '{{ postgres_cfg_vacuum_freeze_table_age | default(150000000) }}',
+      raw: '{{ postgres_cfg_vacuum_freeze_table_age }}',
+      default: 150000000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3101,7 +3341,8 @@
     _postgres_cfg_vacuum_freeze_min_age: {
       section: 'postgres.conf',
       key: 'vacuum_freeze_min_age',
-      raw: '{{ postgres_cfg_vacuum_freeze_min_age | default(50000000) }}',
+      raw: '{{ postgres_cfg_vacuum_freeze_min_age }}',
+      default: 50000000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3111,7 +3352,8 @@
     _postgres_cfg_vacuum_failsafe_age: {
       section: 'postgres.conf',
       key: 'vacuum_failsafe_age',
-      raw: '{{ postgres_cfg_vacuum_failsafe_age | default(1600000000) }}',
+      raw: '{{ postgres_cfg_vacuum_failsafe_age }}',
+      default: 1600000000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3121,10 +3363,8 @@
     _postgres_cfg_vacuum_multixact_freeze_table_age: {
       section: 'postgres.conf',
       key: 'vacuum_multixact_freeze_table_age',
-      raw: '{{
-          postgres_cfg_vacuum_multixact_freeze_table_age |
-          default(150000000)
-        }}',
+      raw: '{{ postgres_cfg_vacuum_multixact_freeze_table_age }}',
+      default: 150000000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3134,10 +3374,8 @@
     _postgres_cfg_vacuum_multixact_freeze_min_age: {
       section: 'postgres.conf',
       key: 'vacuum_multixact_freeze_min_age',
-      raw: '{{
-          postgres_cfg_vacuum_multixact_freeze_min_age |
-          default(5000000)
-        }}',
+      raw: '{{ postgres_cfg_vacuum_multixact_freeze_min_age }}',
+      default: 5000000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3147,10 +3385,8 @@
     _postgres_cfg_vacuum_multixact_failsafe_age: {
       section: 'postgres.conf',
       key: 'vacuum_multixact_failsafe_age',
-      raw: '{{
-          postgres_cfg_vacuum_multixact_failsafe_age |
-          default(1600000000)
-        }}',
+      raw: '{{ postgres_cfg_vacuum_multixact_failsafe_age }}',
+      default: 1600000000,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3160,7 +3396,8 @@
     _postgres_cfg_bytea_output: {
       section: 'postgres.conf',
       key: 'bytea_output',
-      raw: '{{ postgres_cfg_bytea_output | default("hex") }}',
+      raw: '{{ postgres_cfg_bytea_output }}',
+      default: 'hex',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3170,7 +3407,8 @@
     _postgres_cfg_xmlbinary: {
       section: 'postgres.conf',
       key: 'xmlbinary',
-      raw: '{{ postgres_cfg_xmlbinary | default("base64") }}',
+      raw: '{{ postgres_cfg_xmlbinary }}',
+      default: 'base64',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3180,7 +3418,8 @@
     _postgres_cfg_xmloption: {
       section: 'postgres.conf',
       key: 'xmloption',
-      raw: '{{ postgres_cfg_xmloption | default("content") }}',
+      raw: '{{ postgres_cfg_xmloption }}',
+      default: 'content',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3190,7 +3429,8 @@
     _postgres_cfg_gin_pending_list_limit: {
       section: 'postgres.conf',
       key: 'gin_pending_list_limit',
-      raw: '{{ postgres_cfg_gin_pending_list_limit | default("4MB") }}',
+      raw: '{{ postgres_cfg_gin_pending_list_limit }}',
+      default: '4MB',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -3200,10 +3440,9 @@
     _postgres_cfg_createrole_self_grant: {
       section: 'postgres.conf',
       key: 'createrole_self_grant',
-      raw: '{{ postgres_cfg_createrole_self_grant | default([]) }}',
-      parsed: '{{
-          postgres_cfg_createrole_self_grant | default([]) | join(",")
-        }}',
+      raw: '{{ postgres_cfg_createrole_self_grant }}',
+      data: '{{ postgres_cfg_createrole_self_grant | join(",") }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3213,7 +3452,8 @@
     _postgres_cfg_event_triggers: {
       section: 'postgres.conf',
       key: 'event_triggers',
-      raw: '{{ postgres_cfg_event_triggers | default(true) }}',
+      raw: '{{ postgres_cfg_event_triggers }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3223,8 +3463,9 @@
     _postgres_cfg_datestyle: {
       section: 'postgres.conf',
       key: 'datestyle',
-      raw: '{{ postgres_cfg_datestyle | default([]) }}',
-      parsed: '{{ postgres_cfg_datestyle | default([]) | join(",") }}',
+      raw: '{{ postgres_cfg_datestyle }}',
+      data: '{{ postgres_cfg_datestyle | join(",") }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3234,7 +3475,8 @@
     _postgres_cfg_intervalstyle: {
       section: 'postgres.conf',
       key: 'intervalstyle',
-      raw: '{{ postgres_cfg_intervalstyle | default("postgres") }}',
+      raw: '{{ postgres_cfg_intervalstyle }}',
+      default: 'postgres',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3244,7 +3486,8 @@
     _postgres_cfg_timezone: {
       section: 'postgres.conf',
       key: 'timezone',
-      raw: '{{ postgres_cfg_timezone | default("Etc/UTC") }}',
+      raw: '{{ postgres_cfg_timezone }}',
+      default: 'Etc/UTC',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3254,7 +3497,8 @@
     _postgres_cfg_timezone_abbreviations: {
       section: 'postgres.conf',
       key: 'timezone_abbreviations',
-      raw: '{{ postgres_cfg_timezone_abbreviations | default("Default") }}',
+      raw: '{{ postgres_cfg_timezone_abbreviations }}',
+      default: 'Default',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3264,7 +3508,8 @@
     _postgres_cfg_extra_float_digits: {
       section: 'postgres.conf',
       key: 'extra_float_digits',
-      raw: '{{ postgres_cfg_extra_float_digits | default(1) }}',
+      raw: '{{ postgres_cfg_extra_float_digits }}',
+      default: 1,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3274,7 +3519,8 @@
     _postgres_cfg_client_encoding: {
       section: 'postgres.conf',
       key: 'client_encoding',
-      raw: '{{ postgres_cfg_client_encoding | default("sql_ascii") }}',
+      raw: '{{ postgres_cfg_client_encoding }}',
+      default: 'sql_ascii',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3284,7 +3530,8 @@
     _postgres_cfg_lc_messages: {
       section: 'postgres.conf',
       key: 'lc_messages',
-      raw: '{{ postgres_cfg_lc_messages | default("C.UTF-8") }}',
+      raw: '{{ postgres_cfg_lc_messages }}',
+      default: 'C.UTF-8',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3294,7 +3541,8 @@
     _postgres_cfg_lc_monetary: {
       section: 'postgres.conf',
       key: 'lc_monetary',
-      raw: '{{ postgres_cfg_lc_monetary | default("C.UTF-8") }}',
+      raw: '{{ postgres_cfg_lc_monetary }}',
+      default: 'C.UTF-8',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3304,7 +3552,8 @@
     _postgres_cfg_lc_numeric: {
       section: 'postgres.conf',
       key: 'lc_numeric',
-      raw: '{{ postgres_cfg_lc_numeric | default("C.UTF-8") }}',
+      raw: '{{ postgres_cfg_lc_numeric }}',
+      default: 'C.UTF-8',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3314,7 +3563,8 @@
     _postgres_cfg_lc_time: {
       section: 'postgres.conf',
       key: 'lc_time',
-      raw: '{{ postgres_cfg_lc_time | default("C.UTF-8") }}',
+      raw: '{{ postgres_cfg_lc_time }}',
+      default: 'C.UTF-8',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3324,7 +3574,8 @@
     _postgres_cfg_icu_validation_level: {
       section: 'postgres.conf',
       key: 'icu_validation_level',
-      raw: '{{ postgres_cfg_icu_validation_level | default("warning") }}',
+      raw: '{{ postgres_cfg_icu_validation_level }}',
+      default: 'warning',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3334,10 +3585,8 @@
     _postgres_cfg_default_text_search_config: {
       section: 'postgres.conf',
       key: 'default_text_search_config',
-      raw: '{{
-          postgres_cfg_default_text_search_config |
-          default("pg_catalog.english")
-        }}',
+      raw: '{{ postgres_cfg_default_text_search_config }}',
+      default: 'pg_catalog.english',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3347,10 +3596,9 @@
     _postgres_cfg_local_preload_libraries: {
       section: 'postgres.conf',
       key: 'local_preload_libraries',
-      raw: '{{ postgres_cfg_local_preload_libraries | default([]) }}',
-      parsed: '{{
-          postgres_cfg_local_preload_libraries | default([]) | join(",")
-        }}',
+      raw: '{{ postgres_cfg_local_preload_libraries }}',
+      data: '{{ postgres_cfg_local_preload_libraries | join(",") }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3360,10 +3608,9 @@
     _postgres_cfg_session_preload_libraries: {
       section: 'postgres.conf',
       key: 'session_preload_libraries',
-      raw: '{{ postgres_cfg_session_preload_libraries | default([]) }}',
-      parsed: '{{
-          postgres_cfg_session_preload_libraries | default([]) | join(",")
-        }}',
+      raw: '{{ postgres_cfg_session_preload_libraries }}',
+      data: '{{ postgres_cfg_session_preload_libraries | join(",") }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3373,10 +3620,9 @@
     _postgres_cfg_shared_preload_libraries: {
       section: 'postgres.conf',
       key: 'shared_preload_libraries',
-      raw: '{{ postgres_cfg_shared_preload_libraries | default([]) }}',
-      parsed: '{{
-          postgres_cfg_shared_preload_libraries | default([]) | join(",")
-        }}',
+      raw: '{{ postgres_cfg_shared_preload_libraries }}',
+      data: '{{ postgres_cfg_shared_preload_libraries | join(",") }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3386,7 +3632,8 @@
     _postgres_cfg_jit_provider: {
       section: 'postgres.conf',
       key: 'jit_provider',
-      raw: '{{ postgres_cfg_jit_provider | default("llvmjit") }}',
+      raw: '{{ postgres_cfg_jit_provider }}',
+      default: 'llvmjit',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3396,10 +3643,9 @@
     _postgres_cfg_dynamic_library_path: {
       section: 'postgres.conf',
       key: 'dynamic_library_path',
-      raw: '{{ postgres_cfg_dynamic_library_path | default(["$libdir"]) }}',
-      parsed: '{{
-          postgres_cfg_dynamic_library_path | default(["$libdir"]) | join(":")
-        }}',
+      raw: '{{ postgres_cfg_dynamic_library_path }}',
+      data: '{{ postgres_cfg_dynamic_library_path | join(":") }}',
+      default: ['$libdir'],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3409,7 +3655,8 @@
     _postgres_cfg_extension_destdir: {
       section: 'postgres.conf',
       key: 'extension_destdir',
-      raw: '{{ postgres_cfg_extension_destdir | default("") }}',
+      raw: '{{ postgres_cfg_extension_destdir }}',
+      default: '',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3419,7 +3666,8 @@
     _postgres_cfg_gin_fuzzy_search_limit: {
       section: 'postgres.conf',
       key: 'gin_fuzzy_search_limit',
-      raw: '{{ postgres_cfg_gin_fuzzy_search_limit | default(0) }}',
+      raw: '{{ postgres_cfg_gin_fuzzy_search_limit }}',
+      default: 0,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3429,7 +3677,8 @@
     _postgres_cfg_deadlock_timeout: {
       section: 'postgres.conf',
       key: 'deadlock_timeout',
-      raw: '{{ postgres_cfg_deadlock_timeout | default("1s") }}',
+      raw: '{{ postgres_cfg_deadlock_timeout }}',
+      default: '1s',
       hint: 'str or int',
       added: '0.0.0',
       sensitive: false,
@@ -3439,7 +3688,8 @@
     _postgres_cfg_max_locks_per_transaction: {
       section: 'postgres.conf',
       key: 'max_locks_per_transaction',
-      raw: '{{ postgres_cfg_max_locks_per_transaction | default(64) }}',
+      raw: '{{ postgres_cfg_max_locks_per_transaction }}',
+      default: 64,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3449,7 +3699,8 @@
     _postgres_cfg_max_pred_locks_per_transaction: {
       section: 'postgres.conf',
       key: 'max_pred_locks_per_transaction',
-      raw: '{{ postgres_cfg_max_pred_locks_per_transaction | default(64) }}',
+      raw: '{{ postgres_cfg_max_pred_locks_per_transaction }}',
+      default: 64,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3459,7 +3710,8 @@
     _postgres_cfg_max_pred_locks_per_relation: {
       section: 'postgres.conf',
       key: 'max_pred_locks_per_relation',
-      raw: '{{ postgres_cfg_max_pred_locks_per_relation | default(-2) }}',
+      raw: '{{ postgres_cfg_max_pred_locks_per_relation }}',
+      default: -2,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3469,7 +3721,8 @@
     _postgres_cfg_max_pred_locks_per_page: {
       section: 'postgres.conf',
       key: 'max_pred_locks_per_page',
-      raw: '{{ postgres_cfg_max_pred_locks_per_page | default(2) }}',
+      raw: '{{ postgres_cfg_max_pred_locks_per_page }}',
+      default: 2,
       hint: 'int',
       added: '0.0.0',
       sensitive: false,
@@ -3479,7 +3732,8 @@
     _postgres_cfg_array_nulls: {
       section: 'postgres.conf',
       key: 'array_nulls',
-      raw: '{{ postgres_cfg_array_nulls | default(true) }}',
+      raw: '{{ postgres_cfg_array_nulls }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3489,7 +3743,8 @@
     _postgres_cfg_backslash_quote: {
       section: 'postgres.conf',
       key: 'backslash_quote',
-      raw: '{{ postgres_cfg_backslash_quote | default("safe_encoding") }}',
+      raw: '{{ postgres_cfg_backslash_quote }}',
+      default: 'safe_encoding',
       hint: 'str or bool',
       added: '0.0.0',
       sensitive: false,
@@ -3499,7 +3754,8 @@
     _postgres_cfg_escape_string_warning: {
       section: 'postgres.conf',
       key: 'escape_string_warning',
-      raw: '{{ postgres_cfg_escape_string_warning | default(true) }}',
+      raw: '{{ postgres_cfg_escape_string_warning }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3509,7 +3765,8 @@
     _postgres_cfg_lo_compat_privileges: {
       section: 'postgres.conf',
       key: 'lo_compat_privileges',
-      raw: '{{ postgres_cfg_lo_compat_privileges | default(false) }}',
+      raw: '{{ postgres_cfg_lo_compat_privileges }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3519,7 +3776,8 @@
     _postgres_cfg_quote_all_identifiers: {
       section: 'postgres.conf',
       key: 'quote_all_identifiers',
-      raw: '{{ postgres_cfg_quote_all_identifiers | default(false) }}',
+      raw: '{{ postgres_cfg_quote_all_identifiers }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3529,7 +3787,8 @@
     _postgres_cfg_standard_conforming_strings: {
       section: 'postgres.conf',
       key: 'standard_conforming_strings',
-      raw: '{{ postgres_cfg_standard_conforming_strings | default(true) }}',
+      raw: '{{ postgres_cfg_standard_conforming_strings }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3539,7 +3798,8 @@
     _postgres_cfg_synchronize_seqscans: {
       section: 'postgres.conf',
       key: 'synchronize_seqscans',
-      raw: '{{ postgres_cfg_synchronize_seqscans | default(true) }}',
+      raw: '{{ postgres_cfg_synchronize_seqscans }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3549,7 +3809,8 @@
     _postgres_cfg_transform_null_equals: {
       section: 'postgres.conf',
       key: 'transform_null_equals',
-      raw: '{{ postgres_cfg_transform_null_equals | default(false) }}',
+      raw: '{{ postgres_cfg_transform_null_equals }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3559,7 +3820,8 @@
     _postgres_cfg_allow_alter_system: {
       section: 'postgres.conf',
       key: 'allow_alter_system',
-      raw: '{{ postgres_cfg_allow_alter_system | default(true) }}',
+      raw: '{{ postgres_cfg_allow_alter_system }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3569,7 +3831,8 @@
     _postgres_cfg_exit_on_error: {
       section: 'postgres.conf',
       key: 'exit_on_error',
-      raw: '{{ postgres_cfg_exit_on_error | default(false) }}',
+      raw: '{{ postgres_cfg_exit_on_error }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3579,7 +3842,8 @@
     _postgres_cfg_restart_after_crash: {
       section: 'postgres.conf',
       key: 'restart_after_crash',
-      raw: '{{ postgres_cfg_restart_after_crash | default(true) }}',
+      raw: '{{ postgres_cfg_restart_after_crash }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3589,7 +3853,8 @@
     _postgres_cfg_data_sync_retry: {
       section: 'postgres.conf',
       key: 'data_sync_retry',
-      raw: '{{ postgres_cfg_data_sync_retry | default(false) }}',
+      raw: '{{ postgres_cfg_data_sync_retry }}',
+      default: false,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3599,7 +3864,8 @@
     _postgres_cfg_recovery_init_sync_method: {
       section: 'postgres.conf',
       key: 'recovery_init_sync_method',
-      raw: '{{ postgres_cfg_recovery_init_sync_method | default("fsync") }}',
+      raw: '{{ postgres_cfg_recovery_init_sync_method }}',
+      default: 'fsync',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3609,7 +3875,8 @@
     _postgres_cfg_include_dir: {
       section: 'postgres.conf',
       key: 'include_dir',
-      raw: '{{ postgres_cfg_include_dir | default(["conf.d"]) }}',
+      raw: '{{ postgres_cfg_include_dir }}',
+      default: ['conf.d'],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3619,7 +3886,8 @@
     _postgres_cfg_include_if_exists: {
       section: 'postgres.conf',
       key: 'include_if_exists',
-      raw: '{{ postgres_cfg_include_if_exists | default([]) }}',
+      raw: '{{ postgres_cfg_include_if_exists }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3629,7 +3897,8 @@
     _postgres_cfg_include: {
       section: 'postgres.conf',
       key: 'include',
-      raw: '{{ postgres_cfg_include | default([]) }}',
+      raw: '{{ postgres_cfg_include }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3639,7 +3908,10 @@
     _postgres_cfg_environment: {
       section: 'Environment',
       key: 'environment',
-      raw: '{{ postgres_cfg_environment | default({}) }}',
+      raw: '{{ postgres_cfg_environment }}',
+      default: {},
+      role_dest: '{{ _postgres.environment }}',
+      role_perms: '0644',
       hint: 'dict',
       added: '0.0.0',
       sensitive: false,
@@ -3649,8 +3921,11 @@
     _postgres_cfg_ctl: {
       section: 'pg_ctl.conf',
       key: '',
-      raw: '{{ postgres_cfg_ctl | default([]) }}',
-      parsed: '{{ postgres_cfg_ctl | default([]) | join(" ") }}',
+      raw: '{{ postgres_cfg_ctl }}',
+      data: '{{ postgres_cfg_ctl | join(" ") }}',
+      default: [],
+      role_file: '{{ _postgres.pg_ctl }}',
+      role_perms: '0644',
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3660,61 +3935,63 @@
     _postgres_cfg_hba: {
       section: 'pg_hba.conf',
       key: 'hba',
-      raw: '{{ postgres_cfg_hba | default(
-          [{
-            "comment": "Database administrative login by Unix domain socket",
-            "type": "local",
-            "database": "all",
-            "user": "postgres",
-            "method": "peer",
-          },
-          {
-            "comment": "local is for Unix domain socket connections only",
-            "type": "local",
-            "database": "all",
-            "user": "all",
-            "method": "peer",
-          },
-          {
-            "comment": "IPv4 local connections",
-            "type": "host",
-            "database": "all",
-            "user": "all",
-            "address": "127.0.0.1/32",
-            "method": "scram-sha-256",
-          },
-          {
-            "comment": "IPv6 local connections",
-            "type": "host",
-            "database": "all",
-            "user": "all",
-            "address": "::1/128",
-            "method": "scram-sha-256",
-          },
-          {
-            "comment": "Allow replication connections from localhost, by a " ~
-                       "user with the replication privilege.",
-            "type": "local",
-            "database": "replication",
-            "user": "all",
-            "method": "peer",
-          },
-          {
-            "type": "host",
-            "database": "replication",
-            "user": "all",
-            "address": "127.0.0.1/32",
-            "method": "scram-sha-256",
-          },
-          {
-            "type": "host",
-            "database": "replication",
-            "user": "all",
-            "address": "::1/128",
-            "method": "scram-sha-256",
-          }])
-        }}',
-      parsed: [],  # (templated users) Updated after initial set.
+      raw: '{{ postgres_cfg_hba }}',
+      data: [],  # (list of dict) templated users.
+      default: [
+        {
+          'comment': 'Database administrative login by Unix domain socket',
+          'type': 'local',
+          'database': 'all',
+          'user': 'postgres',
+          'method': 'peer',
+        },
+        {
+          'comment': 'local is for Unix domain socket connections only',
+          'type': 'local',
+          'database': 'all',
+          'user': 'all',
+          'method': 'peer',
+        },
+        {
+          'comment': 'IPv4 local connections',
+          'type': 'host',
+          'database': 'all',
+          'user': 'all',
+          'address': '127.0.0.1/32',
+          'method': 'scram-sha-256',
+        },
+        {
+          'comment': 'IPv6 local connections',
+          'type': 'host',
+          'database': 'all',
+          'user': 'all',
+          'address': '::1/128',
+          'method': 'scram-sha-256',
+        },
+        {
+          'comment': '{{
+              "Allow replication connections from localhost, by a " ~
+              "user with the replication privilege." }}',
+          'type': 'local',
+          'database': 'replication',
+          'user': 'all',
+          'method': 'peer',
+        },
+        {
+          'type': 'host',
+          'database': 'replication',
+          'user': 'all',
+          'address': '127.0.0.1/32',
+          'method': 'scram-sha-256',
+        },
+        {
+          'type': 'host',
+          'database': 'replication',
+          'user': 'all',
+          'address': '::1/128',
+          'method': 'scram-sha-256',
+        }
+      ],
       hint: 'list of dict',
       added: '0.0.0',
       sensitive: false,
@@ -3724,7 +4001,8 @@
     _postgres_cfg_hba_include_dir: {
       section: 'pg_hba.conf',
       key: 'include_dir',
-      raw: '{{ postgres_cfg_hba_include_dir | default([]) }}',
+      raw: '{{ postgres_cfg_hba_include_dir }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3734,7 +4012,8 @@
     _postgres_cfg_hba_include_if_exists: {
       section: 'pg_hba.conf',
       key: 'include_if_exists',
-      raw: '{{ postgres_cfg_hba_include_if_exists | default([]) }}',
+      raw: '{{ postgres_cfg_hba_include_if_exists }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3744,7 +4023,8 @@
     _postgres_cfg_hba_include: {
       section: 'pg_hba.conf',
       key: 'include',
-      raw: '{{ postgres_cfg_hba_include | default([]) }}',
+      raw: '{{ postgres_cfg_hba_include }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3754,7 +4034,8 @@
     _postgres_cfg_ident: {
       section: 'pg_ident.conf',
       key: 'ident',
-      raw: '{{ postgres_cfg_ident | default([]) }}',
+      raw: '{{ postgres_cfg_ident }}',
+      default: [],
       hint: 'list of dict',
       added: '0.0.0',
       sensitive: false,
@@ -3764,7 +4045,8 @@
     _postgres_cfg_ident_include_dir: {
       section: 'pg_ident.conf',
       key: 'include_dir',
-      raw: '{{ postgres_cfg_ident_include_dir | default([]) }}',
+      raw: '{{ postgres_cfg_ident_include_dir }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3774,7 +4056,8 @@
     _postgres_cfg_ident_include_if_exists: {
       section: 'pg_ident.conf',
       key: 'include_if_exists',
-      raw: '{{ postgres_cfg_ident_include_if_exists | default([]) }}',
+      raw: '{{ postgres_cfg_ident_include_if_exists }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3784,7 +4067,8 @@
     _postgres_cfg_ident_include: {
       section: 'pg_ident.conf',
       key: 'include',
-      raw: '{{ postgres_cfg_ident_include | default([]) }}',
+      raw: '{{ postgres_cfg_ident_include }}',
+      default: [],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: false,
@@ -3794,8 +4078,10 @@
     _postgres_cfg_databases: {
       section: 'databases',
       key: '',
-      raw: '{{ postgres_cfg_databases | default([]) }}',
-      role: '{{ _postgres.scripts ~ "/postgres_owner" }}',
+      raw: '{{ postgres_cfg_databases }}',
+      default: [],
+      role_owner_script: '{{ _postgres.scripts ~ "/postgres_owner" }}',
+      role_perms: '0700',
       hint: 'list of dict',
       added: '0.0.0',
       sensitive: false,
@@ -3805,8 +4091,10 @@
     _postgres_cfg_databases_backup_enable: {
       section: 'databases',
       key: '',
-      raw: '{{ postgres_cfg_databases_backup_enable | default(true) }}',
-      role: '{{ _postgres.scripts ~ "/postgres_backup" }}',
+      raw: '{{ postgres_cfg_databases_backup_enable }}',
+      default: true,
+      role_backup_script: '{{ _postgres.scripts ~ "/postgres_backup" }}',
+      role_perms: '0700',
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3816,7 +4104,8 @@
     _postgres_cfg_databases_backup_all_enable: {
       section: 'databases',
       key: '',
-      raw: '{{ postgres_cfg_databases_backup_all_enable | default(true) }}',
+      raw: '{{ postgres_cfg_databases_backup_all_enable }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3826,9 +4115,8 @@
     _postgres_cfg_databases_backup_individual_enable: {
       section: 'databases',
       key: '',
-      raw: '{{
-          postgres_cfg_databases_backup_individual_enable | default(true)
-        }}',
+      raw: '{{ postgres_cfg_databases_backup_individual_enable }}',
+      default: true,
       hint: 'bool',
       added: '0.0.0',
       sensitive: false,
@@ -3838,10 +4126,9 @@
     _postgres_cfg_databases_backup_dir: {
       section: 'databases',
       key: '',
-      raw: '{{
-          postgres_cfg_databases_backup_dir |
-          default("/var/lib/postgres_backup")
-        }}',
+      raw:
+        "{{ postgres_cfg_databases_backup_dir | regex_replace('\\/$', '') }}",
+      default: '/var/lib/postgres_backup',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3851,7 +4138,8 @@
     _postgres_cfg_databases_backup_owner: {
       section: 'databases',
       key: '',
-      raw: '{{ postgres_cfg_databases_backup_owner | default("root") }}',
+      raw: '{{ postgres_cfg_databases_backup_owner }}',
+      default: 'root',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3861,7 +4149,8 @@
     _postgres_cfg_databases_backup_group: {
       section: 'databases',
       key: '',
-      raw: '{{ postgres_cfg_databases_backup_group | default("root") }}',
+      raw: '{{ postgres_cfg_databases_backup_group }}',
+      default: 'root',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3871,7 +4160,8 @@
     _postgres_cfg_databases_backup_schedule: {
       section: 'databases',
       key: '',
-      raw: '{{ postgres_cfg_databases_backup_schedule | default("weekly") }}',
+      raw: '{{ postgres_cfg_databases_backup_schedule }}',
+      default: 'weekly',
       hint: 'str',
       added: '0.0.0',
       sensitive: false,
@@ -3881,8 +4171,19 @@
     _postgres_cfg_databases_backup_options: {
       section: 'databases',
       key: '',
-      raw: [],  # (backup) Update after initial set, requires annotations.
-      role: '',  # (option string) Update after initial set.
+      raw: '{{ postgres_cfg_databases_backup_options }}',
+      data: '{{ postgres_cfg_databases_backup_options | join(" ") }}',
+      default: [
+        '--no-owner',
+        '--no-privileges',
+        '--username={{ postgres_srv_user | default("postgres") }}',
+        '--no-password',
+        '{{
+          "--host=" ~
+          postgres_srv_user_connection.login_unix_socket | default("localhost")
+        }}',
+        '--port={{ postgres_srv_user_connection.port | default(5432) }}',
+      ],
       hint: 'list of str',
       added: '0.0.0',
       sensitive: true,
@@ -3892,7 +4193,8 @@
     _postgres_cfg_users: {
       section: 'users',
       key: '',
-      raw: '{{ postgres_cfg_users | default([]) }}',
+      raw: '{{ postgres_cfg_users }}',
+      default: [],
       hint: 'list of dict',
       added: '0.0.0',
       sensitive: true,
@@ -3912,36 +4214,11 @@
                      "port": _postgres_cfg_port.raw})})
         }}'
 
-- name: 'Annotate | update postgres_cfg_databases_backup_options'
-  ansible.builtin.set_fact:
-    _postgres_cfg_databases_backup_options: '{{
-        _postgres_cfg_databases_backup_options |
-        combine({"raw": postgres_cfg_databases_backup_options |
-            default([
-                "--no-owner",
-                "--no-privileges",
-                "--username=" ~ _postgres_srv_user.raw,
-                "--no-password",
-                "--host=" ~
-                    _postgres_srv_user_connection.raw.login_unix_socket,
-                "--port=" ~ _postgres_srv_user_connection.raw.port
-              ])
-          })
-        }}'
-
-- name: 'Annotate | parse postgres_cfg_databases_backup_options'
-  ansible.builtin.set_fact:
-    _postgres_cfg_databases_backup_options: '{{
-        _postgres_cfg_databases_backup_options |
-        combine({"role":
-                 _postgres_cfg_databases_backup_options.raw | join(" ")})
-        }}'
-
 - name: 'Annotate | merge template postgres_cfg_hba'
   ansible.builtin.set_fact:
     _postgres_cfg_hba: '{{
         _postgres_cfg_hba |
-        combine({"parsed": _postgres_cfg_hba.parsed | default([]) +
+        combine({"data": _postgres_cfg_hba.data | default([]) +
                  [postgres_role_template_hba | combine(item)]})
       }}'
   loop: '{{ _postgres_cfg_hba.raw }}'

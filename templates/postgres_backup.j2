@@ -7,7 +7,7 @@ DATE_STAMP=`date +%Y-%m-%d`
 OWNER='{{ _postgres_srv_user.raw }}'
 GROUP='{{ _postgres_srv_group.raw }}'
 TARGET='{{ _postgres_cfg_databases_backup_dir.raw }}'
-OPTIONS='{{ _postgres_cfg_databases_backup_options.role }}'
+OPTIONS='{{ _postgres_cfg_databases_backup_options.data }}'
 
 function dump_all () {
   DUMP="${TARGET}/all-databases-${DATE_STAMP}.sql"

@@ -127,7 +127,6 @@ postgres_srv_create_user: true
 # (NFS with squashed mounts, mapped container mounts, etc) the local root user
 # will not have sufficient privileges to modify these files.
 #
-# TODO(role): confirm dirs.
 # Applies to:
 # * postgres_cfg_data_directory
 # * postgres_cfg_databases_backup_dir

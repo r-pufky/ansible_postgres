@@ -36,26 +36,26 @@
   ansible.builtin.set_fact:
     _postgres_srv_user: '{{
         _postgres_srv_user |
-        combine({"parsed": _postgres_srv_user_query.uid})
+        combine({"role_uid": _postgres_srv_user_query.uid})
       }}'
     _postgres_srv_group: '{{
         _postgres_srv_group |
-        combine({"parsed": _postgres_srv_user_query.group})
+        combine({"role_gid": _postgres_srv_user_query.group})
       }}'
 
 - name: 'Prep | set debconf postrm_purge_data'
   ansible.builtin.debconf:
     name: '{{ "postgresql-" ~ _postgres_srv_version.raw }}'
-    question: '{{ _postgres_srv_purge_enable.role }}'
+    question: '{{ _postgres_srv_purge_enable.role_question }}'
     vtype: 'boolean'
-    value: '{{ _postgres_srv_purge_enable.parsed }}'
+    value: '{{ _postgres_srv_purge_enable.role_value }}'
 
 - name: 'Prep | set debconf auto_upgrade'
   ansible.builtin.debconf:
     name: 'postgresql'
-    question: '{{ _postgres_srv_auto_upgrade_enable.role }}'
+    question: '{{ _postgres_srv_auto_upgrade_enable.role_question }}'
     vtype: 'boolean'
-    value: '{{ _postgres_srv_auto_upgrade_enable.parsed }}'
+    value: '{{ _postgres_srv_auto_upgrade_enable.role_value }}'
 
 - name: 'Prep | configure locales'
   community.general.locale_gen:

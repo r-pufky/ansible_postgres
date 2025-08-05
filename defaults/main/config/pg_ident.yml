@@ -62,6 +62,8 @@ postgres_cfg_ident: []
 #         *: Processed in file name order (C locale rules) - numbers before
 #            letters, and uppercase before lowercase.
 #   {QUOTE}: Provide quoting if necessary.
+#        *: Cannot overlap directories with postgres_cfg_hba_include_dir,
+#           postgres_cfg_include_dir.
 #
 # Default: [].
 postgres_cfg_ident_include_dir: []

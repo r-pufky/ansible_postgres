@@ -21,31 +21,33 @@
 {% for header in _postgres_order %}
 {%   for section in _postgres_map | selectattr('value.section', '==', header) | sort(attribute='value.order') %}
 {%     if section.value.key in ['include_dir', 'include_if_exists', 'include'] %}
-{%       if section.value.raw | length > 0%}
+{%       if section.value.raw | length > 0 %}
 {%         for dir in section.value.raw %}
 {{ section.value.key }} '{{ dir }}'
 {%         endfor %}
 {%       endif %}
-{%     elif section.value.hint == 'list of str' %}
-{{ section.value.key }}='{{ section.value.parsed }}'
-{%     elif section.value.hint in ['int', 'float'] %}
+{%     elif not section.value.deprecated %}
+{%       if section.value.hint == 'list of str' %}
+{{ section.value.key }}='{{ section.value.data }}'
+{%       elif section.value.hint in ['int', 'float'] %}
 {{ section.value.key }}={{ section.value.raw }}
-{%     elif section.value.hint == 'bool' %}
+{%       elif section.value.hint == 'bool' %}
 {{ section.value.key }}={{ section.value.raw | lower }}
-{%     elif section.value.hint == 'str or int' %}
-{%       if section.value.raw | int('str') == 'str' %}
+{%       elif section.value.hint == 'str or int' %}
+{%         if section.value.raw | int('str') == 'str' %}
 {{ section.value.key }}='{{ section.value.raw }}'
-{%       else %}
+{%         else %}
 {{ section.value.key }}={{ section.value.raw }}
-{%       endif %}
-{%     elif section.value.hint == 'str or bool' %}
-{%       if section.value.raw | lower in ['true', 'false'] %}
+{%         endif %}
+{%       elif section.value.hint == 'str or bool' %}
+{%         if section.value.raw | lower in ['true', 'false'] %}
 {{ section.value.key }}={{ section.value.raw | lower }}
+{%         else %}
+{{ section.value.key }}='{{ section.value.raw }}'
+{%         endif %}
 {%       else %}
 {{ section.value.key }}='{{ section.value.raw }}'
 {%       endif %}
-{%     else %}
-{{ section.value.key }}='{{ section.value.raw }}'
 {%     endif %}
 {%   endfor %}
 {% endfor %}

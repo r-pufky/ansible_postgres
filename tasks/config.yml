@@ -27,12 +27,11 @@
 - name: 'Config | check data directory initialization'
   ansible.builtin.stat:
     path: '{{ _postgres_cfg_data_directory.raw }}'
-  become:
-    '{{ true if _postgres_srv_user_data_manage_enable.raw else omit }}'
+  become: true
   become_user: '{{
       _postgres_srv_user.raw
       if _postgres_srv_user_data_manage_enable.raw else
-      omit
+      "root"
     }}'
   register: _postgres_init
 
@@ -40,7 +39,7 @@
   when: not _postgres_init.stat.exists
   ansible.builtin.command:
     argv:
-      - '{{ _postgres_cfg_data_directory.role }}'
+      - '{{ _postgres_cfg_data_directory.role_initdb }}'
       - '-D'
       - '{{ _postgres_cfg_data_directory.raw }}'
   become: true
@@ -53,26 +52,26 @@
     - name: 'Config | enable backups | set backup directory'
       ansible.builtin.file:
         dest: '{{ _postgres_cfg_databases_backup_dir.raw }}'
-        owner: '{{ _postgres_srv_user.parsed }}'
-        group: '{{ _postgres_srv_group.parsed }}'
+        owner: '{{ _postgres_srv_user.role_uid }}'
+        group: '{{ _postgres_srv_group.role_gid }}'
         mode: '0755'
         state: 'directory'
 
     - name: 'Config | enable backups | set scripts directory'
       ansible.builtin.file:
         dest: '{{ _postgres.scripts }}'
-        owner: '{{ _postgres_srv_user.parsed }}'
-        group: '{{ _postgres_srv_group.parsed }}'
+        owner: '{{ _postgres_srv_user.role_uid }}'
+        group: '{{ _postgres_srv_group.role_gid }}'
         mode: '0755'
         state: 'directory'
 
     - name: 'Config | enable backups | set backup script'
       ansible.builtin.template:
         src: 'postgres_backup.j2'
-        dest: '{{ _postgres_cfg_databases_backup_enable.role }}'
-        owner: '{{ _postgres_srv_user.parsed }}'
-        group: '{{ _postgres_srv_group.parsed }}'
-        mode: '0700'
+        dest: '{{ _postgres_cfg_databases_backup_enable.role_backup_script }}'
+        owner: '{{ _postgres_srv_user.role_uid }}'
+        group: '{{ _postgres_srv_group.role_gid }}'
+        mode: '{{ _postgres_cfg_databases_backup_enable.role_perms }}'
 
     - name: 'Config | enable backups | create backup service'
       ansible.builtin.include_role:
@@ -87,7 +86,10 @@
               requires: ['postgres_backup.timer']
             service:
               type: 'simple'
-              exec_start: ['{{ _postgres_cfg_databases_backup_enable.role }}']
+              exec_start:
+                - '{{
+                    _postgres_cfg_databases_backup_enable.role_backup_script
+                  }}'
             exec:
               user: 'root'
               group: 'root'
@@ -109,7 +111,7 @@
   block:
     - name: 'Config | disable backups | set backup script'
       ansible.builtin.file:
-        dest: '{{ _postgres_cfg_databases_backup_enable.role }}'
+        dest: '{{ _postgres_cfg_databases_backup_enable.role_backup_script }}'
         state: 'absent'
 
     - name: 'Config | disable backups | remove backup service'
@@ -128,40 +130,39 @@
 - name: 'Config | create data directory'
   ansible.builtin.file:
     path: '{{ _postgres_cfg_data_directory.raw }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0700'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_data_directory.role_perms }}'
     state: 'directory'
-  become:
-    '{{ true if _postgres_srv_user_data_manage_enable.raw else omit }}'
+  become: true
   become_user: '{{
       _postgres_srv_user.raw
       if _postgres_srv_user_data_manage_enable.raw else
-      omit
+      "root"
     }}'
 
 - name: 'Config | create HBA directory'
   ansible.builtin.file:
-    path: '{{ _postgres_cfg_hba_file.parsed }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0755'
+    path: '{{ _postgres_cfg_hba_file.role_hba_dir }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_hba_file.role_hba_dir_perms }}'
     state: 'directory'
 
 - name: 'Config | create ident directory'
   ansible.builtin.file:
-    path: '{{ _postgres_cfg_ident_file.parsed }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0755'
+    path: '{{ _postgres_cfg_ident_file.role_ident_dir }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_ident_file.role_ident_dir_perms }}'
     state: 'directory'
 
 - name: 'Config | create PID directory'
   ansible.builtin.file:
-    path: '{{ _postgres_cfg_external_pid_file.parsed }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '2775'
+    path: '{{ _postgres_cfg_external_pid_file.role_pid_dir }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_external_pid_file.role_perms }}'
     state: 'directory'
 
 # Custom data directories require setting shell environments correctly so they
@@ -170,87 +171,86 @@
   when: _postgres_srv_profile_path.raw | length == 0
   ansible.builtin.template:
     src: 'postgres.j2'
-    dest: '/etc/profile.d/postgres'
+    dest: '{{ _postgres_srv_profile_path.role_dest }}'
     owner: 'root'
     group: 'root'
-    mode: '0644'
+    mode: '{{ _postgres_srv_profile_path.role_perms }}'
 
 - name: 'Config | set custom postgres global environment profile'
   when: _postgres_srv_profile_path.raw | length > 0
   ansible.builtin.copy:
-    src: '{{ _postgres_srv_profile_path.role }}'
-    dest: '/etc/profile.d/postgres'
+    src: '{{ _postgres_srv_profile_path.role_src }}'
+    dest: '{{ _postgres_srv_profile_path.role_dest }}'
     owner: 'root'
     group: 'root'
-    mode: '0644'
+    mode: '{{ _postgres_srv_profile_path.role_perms }}'
     force: true
 
 - name: 'Config | set database owner script'
   ansible.builtin.template:
     src: 'postgres_owner.j2'
-    dest: '{{ _postgres_cfg_databases.role }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0700'
+    dest: '{{ _postgres_cfg_databases.role_owner_script }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_databases.role_perms }}'
 
 - name: 'Config | set conf.d'
   when: _postgres_srv_confd_path.raw | length > 0
   ansible.builtin.copy:
-    src: '{{ _postgres_srv_confd_path.role }}'
-    dest: '{{ _postgres.confd }}'
-    owner: 'root'
-    group: 'root'
-    mode: '0640'
+    src: '{{ _postgres_srv_confd_path.role_src }}'
+    dest: '{{ _postgres_srv_confd_path.role_dest }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_srv_confd_path.role_perms }}'
     force: true
 
 - name: 'Config | set environment'
   ansible.builtin.template:
     src: 'environment.j2'
-    dest: '{{ _postgres.environment }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0644'
+    dest: '{{ _postgres_cfg_environment.role_dest }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_environment.role_perms }}'
 
 - name: 'Config | set postgresql.conf'
   ansible.builtin.template:
     src: 'postgresql.conf.j2'
     dest: '{{ _postgres.postgresql }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
     mode: '0644'
 
 - name: 'Config | set pg_ctl.conf'
   ansible.builtin.template:
     src: 'pg_ctl.conf.j2'
-    dest: '{{ _postgres.pg_ctl }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0644'
+    dest: '{{ _postgres_cfg_ctl.role_file }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_ctl.role_perms }}'
 
 - name: 'Config | set pg_hba.conf'
   ansible.builtin.template:
     src: 'pg_hba.conf.j2'
-    dest: '{{ _postgres.pg_hba }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0640'
+    dest: '{{ _postgres_cfg_hba_file.raw }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_hba_file.role_perms }}'
 
 - name: 'Config | set pg_ident.conf'
   ansible.builtin.template:
     src: 'pg_ident.conf.j2'
-    dest: '{{ _postgres.pg_ident }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0640'
-
+    dest: '{{ _postgres_cfg_ident_file.raw }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_cfg_ident_file.role_perms }}'
 
 - name: 'Config | set start.conf'
   ansible.builtin.template:
     src: 'start.conf.j2'
-    dest: '{{ _postgres.start }}'
-    owner: '{{ _postgres_srv_user.parsed }}'
-    group: '{{ _postgres_srv_group.parsed }}'
-    mode: '0644'
+    dest: '{{ _postgres_srv_startup.role_dest }}'
+    owner: '{{ _postgres_srv_user.role_uid }}'
+    group: '{{ _postgres_srv_group.role_gid }}'
+    mode: '{{ _postgres_srv_startup.role_perms }}'
 
 - name: 'Config | start services'
   ansible.builtin.systemd:

@@ -1,0 +1,55 @@
+---
+- name: 'Converge'
+  hosts: 'all'
+  gather_facts: false
+  tasks:
+    - name: Converge | assert unique postgres_cfg_include_dir
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'assertions.yml'
+      vars:
+        test_name: Converge | assert unique postgres_cfg_include_dir
+        test_role: 'r_pufky.srv.postgres'
+        test_fail_message: >
+          postgres_cfg_include_dir: 'conf.d'
+          postgres_cfg_hba_include_dir: ''
+          postgres_cfg_ident_include_dir: 'conf.d'
+
+          did not trigger assertion.
+        postgres_cfg_include_dir: ['conf.d']
+        postgres_cfg_hba_include_dir: ['conf.d']
+        postgres_cfg_ident_include_dir: ['conf.d']
+
+    - name: Converge | assert unique postgres_cfg_hba_include_dir
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'assertions.yml'
+      vars:
+        test_name: Converge | assert unique postgres_cfg_hba_include_dir
+        test_role: 'r_pufky.srv.postgres'
+        test_fail_message: >
+          postgres_cfg_include_dir: 'conf.d'
+          postgres_cfg_hba_include_dir: 'conf.d'
+          postgres_cfg_ident_include_dir: ''
+
+          did not trigger assertion.
+        postgres_cfg_include_dir: ['conf.d']
+        postgres_cfg_hba_include_dir: ['conf.d']
+        postgres_cfg_ident_include_dir: []
+
+    - name: Converge | assert unique postgres_cfg_ident_include_dir
+      ansible.builtin.include_role:
+        name: 'r_pufky.lib.tests'
+        tasks_from: 'assertions.yml'
+      vars:
+        test_name: Converge | assert unique postgres_cfg_ident_include_dir
+        test_role: 'r_pufky.srv.postgres'
+        test_fail_message: >
+          postgres_cfg_include_dir: 'conf.d'
+          postgres_cfg_hba_include_dir: ''
+          postgres_cfg_ident_include_dir: 'conf.d'
+
+          did not trigger assertion.
+        postgres_cfg_include_dir: ['conf.d']
+        postgres_cfg_hba_include_dir: []
+        postgres_cfg_ident_include_dir: ['conf.d']

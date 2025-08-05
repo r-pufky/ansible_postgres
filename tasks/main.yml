@@ -1,4 +1,6 @@
 ---
+- name: 'Assert'
+  ansible.builtin.import_tasks: 'assert.yml'
 - name: 'Annotate'
   ansible.builtin.import_tasks: 'annotate.yml'
 - name: 'Prep'

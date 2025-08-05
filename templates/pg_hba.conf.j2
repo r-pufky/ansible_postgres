@@ -15,7 +15,7 @@ Reference:
 {%       endfor %}
 {%     endif %}
 {%   elif section.value.key == 'hba' %}
-{%     for auth in section.value.parsed %}
+{%     for auth in section.value.data %}
 {%       if auth.comment | length > 0 %}
 # {{ auth.comment }}
 {%       endif %}

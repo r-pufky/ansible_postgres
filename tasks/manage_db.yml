@@ -107,7 +107,8 @@
   become: true
   become_user: '{{ _postgres_srv_user.raw }}'
   register: _postgres_manage_db
-  no_log: true  # passwords.
+  # TODO(role): disabled until future ansible data tagging update.
+  # no_log: true  # passwords.
 
 - name: 'Manage | DB | parse import options'
   ansible.builtin.set_fact:
@@ -149,12 +150,11 @@
         group: '{{ _postgres_srv_group.raw }}'
         mode: '0600'
         force: true
-      become:
-        '{{ true if _postgres_srv_user_data_manage_enable.raw else omit }}'
+      become: true
       become_user: '{{
           _postgres_srv_user.raw
           if _postgres_srv_user_data_manage_enable.raw else
-          omit
+          "root"
         }}'
 
     - name: 'Manage | DB | import | {{ db.name }}'
@@ -245,7 +245,8 @@
         trust_input: '{{ db.trust_input | default(true) }}'
       become: true
       become_user: '{{ _postgres_srv_user.raw }}'
-      no_log: true  # passwords.
+      # TODO(role): disabled until future ansible data tagging update.
+      # no_log: true  # passwords.
   always:
     - name: 'Manage | DB | import | remove staged files'
       ansible.builtin.file:

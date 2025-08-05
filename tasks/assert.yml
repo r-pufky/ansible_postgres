@@ -1,0 +1,20 @@
+---
+# yamllint disable rule:line-length
+###############################################################################
+# Assert Settings
+###############################################################################
+# Sanity check options to stop preventable errors and accidental data deletion.
+
+- name: 'Prep | assert non-duplicated include_dirs'
+  ansible.builtin.assert:  # noqa jinja[spacing]
+    quiet: true
+    that:
+      - not postgres_cfg_include_dir | intersect(postgres_cfg_hba_include_dir + postgres_cfg_ident_include_dir) | length > 0
+      - not postgres_cfg_hba_include_dir | intersect(postgres_cfg_include_dir + postgres_cfg_ident_include_dir) | length > 0
+      - not postgres_cfg_ident_include_dir | intersect(postgres_cfg_include_dir + postgres_cfg_hba_include_dir) | length > 0
+    fail_msg: |
+      ✘ Cannot overlap include_dir directives.
+
+      postgres_cfg_include_dir: '{{ postgres_cfg_include_dir | join(",") }}'
+      postgres_cfg_hba_include_dir: '{{ postgres_cfg_hba_include_dir | join(",")}}'
+      postgres_cfg_ident_include_dir: '{{ postgres_cfg_ident_include_dir | join(",") }}'

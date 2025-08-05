@@ -2522,6 +2522,8 @@ postgres_cfg_recovery_init_sync_method: 'fsync'
 #   {FILE}: Must end in '.conf' and not be hidden dotfiles (.{FILE}).
 #        *: Processed in file name order (C locale rules) - numbers before
 #           letters, and uppercase before lowercase.
+#        *: Cannot overlap directories with postgres_cfg_hba_include_dir,
+#           postgres_cfg_ident_include_dir.
 #
 # Default:
 #   - 'conf.d'
