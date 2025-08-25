@@ -49,21 +49,6 @@
 # * https://www.postgresql.org/docs/current/config-setting.html#CONFIG-SETTING-NAMES-VALUES
 # yamllint enable rule:line-length
 
-# TODO(17+): Remove variable renaming check on next major nzbget release.
-- name: 'Annotate | check deprecated variable usage'
-  when: >
-    hostvars[inventory_hostname] | dict2items |
-    selectattr("key", "match", "postgres_config_*") | length > 0 or
-    hostvars[inventory_hostname] | dict2items |
-    selectattr("key", "match", "postgres_service_*") | length > 0
-  ansible.builtin.fail:
-    msg: |
-      ✘ Role variables have migrated. Read defaults and update.
-
-      postgres_cfg_* -> postgres_cfg_*
-      postgres_service_* -> postgres_srv_*
-      postgres_* -> postgres_srv_*
-
 - name: 'Annotate | normalize base paths'
   ansible.builtin.set_fact:
     _postgres: {

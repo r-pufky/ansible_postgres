@@ -52,18 +52,18 @@ provisioner:
           - name: 'test2'
             owner: 'postgres'
     host_vars:
-      postgres-debian-12-user_data:
+      postgres-debian-13-user_data:
         posgres_srv_user_data_manage_enable: true
 platforms:
-  - name: 'postgres-debian-12-default'
-    image: 'ghcr.io/hifis-net/debian-systemd:12'
+  - name: 'postgres-debian-13-default'
+    image: 'ghcr.io/hifis-net/debian-systemd:13'
     systemd: 'always'
     volumes:
       - '/sys/fs/cgroup:/sys/fs/cgroup:ro'
     command: '/lib/systemd/systemd'
     pre_build_image: true
-  - name: 'postgres-debian-12-user_data'
-    image: 'ghcr.io/hifis-net/debian-systemd:12'
+  - name: 'postgres-debian-13-user_data'
+    image: 'ghcr.io/hifis-net/debian-systemd:13'
     systemd: 'always'
     volumes:
       - '/sys/fs/cgroup:/sys/fs/cgroup:ro'

@@ -45,8 +45,8 @@ provisioner:
         postgres_cfg_hba_include:
           - '/tmp/if_exists.conf'
 platforms:
-  - name: 'postgres-debian-12-hba_includes'
-    image: 'ghcr.io/hifis-net/debian-systemd:12'
+  - name: 'postgres-debian-13-hba_includes'
+    image: 'ghcr.io/hifis-net/debian-systemd:13'
     systemd: 'always'
     volumes:
       - '/sys/fs/cgroup:/sys/fs/cgroup:ro'

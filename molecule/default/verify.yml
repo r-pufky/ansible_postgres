@@ -23,7 +23,12 @@
         quiet: true
         that:
           - _test_query.rowcount == 1
-        fail_msg: '✘ example user does not exist.'
+        fail_msg: |
+          ╭───────────────────────────────────────────────────────────────────╮
+          │                                                                   │
+          │                   example user does not exist.                    │
+          │                                                                   │
+          ╰───────────────────────────────────────────────────────────────────╯
 
     # community.postgresql.postgresql_user - just check DB is created.
     - name: 'Verify database | query DB test1'
@@ -45,7 +50,12 @@
         quiet: true
         that:
           - _test_query.rowcount == 1
-        fail_msg: '✘ roundcube DB does not exist.'
+        fail_msg: |
+          ╭───────────────────────────────────────────────────────────────────╮
+          │                                                                   │
+          │                   roundcube DB does not exist.                    │
+          │                                                                   │
+          ╰───────────────────────────────────────────────────────────────────╯
 
 - name: 'Verify config'
   hosts: 'all'

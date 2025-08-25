@@ -1,6 +1,6 @@
 ---
 - name: 'Verify'
-  hosts: 'postgres-debian-12-ident_includes'
+  hosts: 'postgres-debian-13-ident_includes'
   gather_facts: false
   tasks:
     - name: 'Verify | /etc/postgresql/17/main/pg_ident.conf'

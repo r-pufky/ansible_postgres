@@ -20,8 +20,8 @@
 #   change - e.g. Postgres: 17.x -> Role: 17.0.1  (1 role release).
 
 # Last time Postgres options were validated against a default configuration.
-postgres_role_validate_date: '2025-07-22'
-postgres_role_validate_release: 'bookworm'
+postgres_role_validate_date: '2025-08-25'
+postgres_role_validate_release: 'trixie'
 postgres_role_validate_version: '17'
 
 ###############################################################################
@@ -46,7 +46,7 @@ postgres_role_apt_sources:
       - 'deb'
     uris: 'https://apt.postgresql.org/pub/repos/apt'
     suites:
-      - 'bookworm-pgdg'
+      - 'trixie-pgdg'
     components:
       - 'main'
     signed_by: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'

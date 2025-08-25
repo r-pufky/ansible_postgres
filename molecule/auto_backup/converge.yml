@@ -8,7 +8,7 @@
         name: 'r_pufky.srv.postgres'
 
 - name: 'Converge | disable auto-backup'
-  hosts: 'postgres-debian-12-auto_backup-disable'
+  hosts: 'postgres-debian-13-auto_backup-disable'
   gather_facts: false
   tasks:
     - name: 'Converge | apply r_pufky.srv.postgres'

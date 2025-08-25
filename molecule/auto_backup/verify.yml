@@ -23,7 +23,12 @@
         quiet: true
         that:
           - _test_query.rowcount == 1
-        fail_msg: '✘ skeleton.backup DB does not exist.'
+        fail_msg: |
+          ╭───────────────────────────────────────────────────────────────────╮
+          │                                                                   │
+          │                skeleton.backup DB does not exist.                 │
+          │                                                                   │
+          ╰───────────────────────────────────────────────────────────────────╯
 
     - name:
         'Verify database | query DB skeleton table permissions'
@@ -47,9 +52,13 @@
         quiet: true
         that:
           - _test_query.rowcount == 1
-        fail_msg: >
-          ✘ skeleton.backup should be owned by example role.
-          ({{ _test_query.query_result }}).
+        fail_msg: |
+          ╭───────────────────────────────────────────────────────────────────╮
+          │                                                                   │
+          │         skeleton.backup should be owned by example role.          │
+          │                                                                   │
+          ├───────────────────────────────────────────────────────────────────╯
+          │ {{ _test_query.query_result }}
 
     - name: 'Verify database | query DB skeleton sequence permissions'
       community.postgresql.postgresql_query:
@@ -71,12 +80,16 @@
         quiet: true
         that:
           - _test_query.rowcount == 1
-        fail_msg: >
-          ✘ pg_sequences should be owned by example role.
-          ({{ _test_query.query_result }}).
+        fail_msg: |
+          ╭───────────────────────────────────────────────────────────────────╮
+          │                                                                   │
+          │           pg_sequences should be owned by example role.           │
+          │                                                                   │
+          ├───────────────────────────────────────────────────────────────────╯
+          │ {{ _test_query.query_result }}
 
 - name: 'Verify backup disabled'
-  hosts: 'postgres-debian-12-auto_backup-disable'
+  hosts: 'postgres-debian-13-auto_backup-disable'
   gather_facts: false
   tasks:
     - name: >

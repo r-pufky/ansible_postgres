@@ -56,8 +56,8 @@ provisioner:
         postgres_cfg_include:
           - '/tmp/include.conf'
 platforms:
-  - name: 'postgres-debian-12-postgresql_includes'
-    image: 'ghcr.io/hifis-net/debian-systemd:12'
+  - name: 'postgres-debian-13-postgresql_includes'
+    image: 'ghcr.io/hifis-net/debian-systemd:13'
     systemd: 'always'
     volumes:
       - '/sys/fs/cgroup:/sys/fs/cgroup:ro'
