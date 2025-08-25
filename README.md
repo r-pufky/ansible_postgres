@@ -111,6 +111,13 @@ Run all unit tests:
 molecule test --all
 ```
 
+### Releases
+Major release versions track Postgres release versions. Branch label tracks
+Debian OS release.
+
+* **[13.x.x](https://github.com/r-pufky/ansible_postgres)**: 13 Trixie.
+* **[12.x.x](https://github.com/r-pufky/ansible_postgres/tree/12.x)**: 12 Bookworm.
+
 ## Issues
 Create a bug and provide as much information as possible.
 
