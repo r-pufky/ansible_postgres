@@ -5,7 +5,7 @@
 ###############################################################################
 # Sanity check options to stop preventable errors and accidental data deletion.
 
-- name: 'Prep | assert non-duplicated include_dirs'
+- name: 'Assert | assert non-duplicated include_dirs'
   ansible.builtin.assert:  # noqa jinja[spacing]
     quiet: true
     that:

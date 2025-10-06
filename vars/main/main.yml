@@ -52,6 +52,14 @@ postgres_role_apt_sources:
     signed_by: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
 
 ###############################################################################
+# Unsafe Templates
+###############################################################################
+# Unsafe cannot be used in a filter assignment and must be done transitively
+# via variable assignment.
+
+postgres_role_unsafe_search_path: ['"$user"', 'public']
+
+###############################################################################
 # Default Postgres User/Group
 ###############################################################################
 

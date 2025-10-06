@@ -122,7 +122,7 @@ postgres_srv_create_user: true
 
 # Enable user management of data/media files?
 #
-# Use nzbget_srv_user to execute data/media management commands. Role
+# Use postgres_srv_user to execute data/media management commands. Role
 # applies media permissions using 'root' by default. For mounted data locations
 # (NFS with squashed mounts, mapped container mounts, etc) the local root user
 # will not have sufficient privileges to modify these files.

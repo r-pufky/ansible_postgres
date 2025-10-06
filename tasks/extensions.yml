@@ -23,7 +23,7 @@
   when: user.extensions.database_owner is defined
   ansible.builtin.command:
     argv:
-      - '{{ _postgres_cfg_databases.role_owner_script }}'
+      - '{{ _postgres_cfg_databases._owner_script }}'
       - '{{ item }}'
       - '{{ user.name }}'
   register: _postgres_owner_script
