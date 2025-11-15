@@ -104,7 +104,7 @@ Please submit a bug if a new version of Postgres has been released and updated
 default configuration variables are needed.
 
 ## Development
-Configure [environment](https://github.com/r-pufky/ansible_collection_docs/blob/main/ansible/environment.md)
+Configure [environment](https://r-pufky.github.io/ansible_collection_docs/ansible/environment)
 
 Run all unit tests:
 ``` bash
