@@ -22,6 +22,8 @@ All ports and protocols have been defined for the role.
 Read defaults documentation. All options are supported. Multiple versions of
 Postgres may be managed by applying the Role separately for each version.
 
+[Additional documentation](http://r-pufky.github.io/r-pufky/docs/service/postgres).
+
 ### Setup Postgres, create user, create database, enable backups.
 host_vars/db.example.com/vars/postgres.yml
 ``` yaml
