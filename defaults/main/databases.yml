@@ -6,8 +6,8 @@
 
 # Databases to manage.
 #
-# Databases are managed using connection options from postgres_srv_user_connection;
-# unless explicitly overridden.
+# Databases are managed using connection options from
+# postgres_srv_user_connection unless explicitly overridden.
 #
 # postgres_cfg_databases:
 #     list of dict - Database definitions from community.postgres.postgres_db.
@@ -174,8 +174,8 @@ postgres_cfg_databases: []
 # Postgres Database Backups
 ###############################################################################
 # Backups are done through psql and executed as postgres with local unix
-# socket credentials from postgres_srv_user_connection on a schedule. Databases are
-# date stamped, linked to 'latest', removing 'other' permissions.
+# socket credentials from postgres_srv_user_connection on a schedule. Databases
+# are date stamped, linked to 'latest', removing 'other' permissions.
 #
 # All backups except 'latest' are compressed with tar.xz.
 #

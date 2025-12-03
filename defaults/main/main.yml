@@ -136,9 +136,9 @@ postgres_srv_user_data_manage_enable: false
 
 # Role connection options for postgres_srv_user.
 #
-# Postgres is managed through the postgres_srv_user using the specified options. By
-# default, postgres_srv_user is configured to connect via unix socket connections.
-# These are also used for backups.
+# Postgres is managed through the postgres_srv_user using the specified
+# options. By default, postgres_srv_user is configured to connect via unix
+# socket connections. These are also used for backups.
 #
 # postgres_srv_user_connection:
 #     dict - DB user definitions from community.postgres.postgresql_user.
