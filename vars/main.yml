@@ -1,0 +1,123 @@
+---
+###############################################################################
+# Postgres Role Options
+###############################################################################
+#
+# Updates:
+# * KEEP a separate change log as changes are made.
+# * Use bare-metal docs to validate package/process changes.
+# * Update defaults.
+# * Update tests for any changes.
+# * Standard validation testing (yamllint, ansible-lint, to-do, no-qa).
+
+postgres___release: "{{ {} | r_pufky.data.v3(
+
+    _date='2026-04-02',
+    _debian='trixie',
+    _app='17',
+  ) }}"
+
+###############################################################################
+# APT Packages
+###############################################################################
+# Reference:
+# * https://www.postgresql.org/download/linux/debian/
+
+postgres___prep_packages:
+  - 'ssl-cert'  # user requires ssl-cert group.
+  - 'locales'  # community.general.locale_gen.
+
+postgres___packages:
+  - '{{ "postgresql-" ~ postgres___release._app }}'
+  - 'libpq-dev'  # community.postgresql.
+  - 'python3-psycopg2'  # community.postgresql.
+  - 'xz-utils'  # tar.xz backups.
+
+postgres___apt_sources:
+  - name: 'postgres'
+    types:
+      - 'deb'
+    uris: 'https://apt.postgresql.org/pub/repos/apt'
+    suites:
+      - 'trixie-pgdg'
+    components:
+      - 'main'
+    signed_by: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+
+###############################################################################
+# Postgres Options
+###############################################################################
+# Postgres installs to locations based on the installed version, so all paths
+# need to be dynamically generated defaults here and updated in prep for the
+# requested install version.
+
+postgres___etc_d: '{{ "/etc/postgresql/" ~ postgres___release._app }}'
+postgres___usr_d: '{{ "/usr/lib/postgresql/" ~ postgres___release._app }}'
+postgres___lib_d: '{{ "/var/lib/postgresql/" ~ postgres___release._app }}'
+
+postgres___etc: "{{ {} | r_pufky.data.v3(
+
+    _d=postgres___etc_d,
+
+    _scripts_d=postgres___etc_d ~ '/scripts',
+    _backup_script=postgres___etc_d ~ '/scripts/postgres_backup',
+    _owner_script=postgres___etc_d ~ '/scripts/postgres_owner',
+
+    _main_d=postgres___etc_d ~ '/main',
+    _conf_d=postgres___etc_d ~ '/main/conf.d',
+    _secure_conf_d=postgres___etc_d ~ '/main/secure.conf.d',
+    _environment=postgres___etc_d ~ '/main/environment',
+    _pg_ctl=postgres___etc_d ~ '/main/pg_ctl.conf',
+    _pg_hba=postgres___etc_d ~ '/main/pg_hba.conf',
+    _pg_ident=postgres___etc_d ~ '/main/pg_ident.conf',
+    _postgresql=postgres___etc_d ~ '/main/postgresql.conf',
+    _start=postgres___etc_d ~ '/main/start.conf',
+  ) }}"
+
+postgres___usr: "{{ {} | r_pufky.data.v3(
+
+    _d=postgres___usr_d,
+    _bin_d=postgres___usr_d ~ '/bin',
+    _initdb=postgres___usr_d ~ '/bin/initdb',
+  ) }}"
+
+postgres___lib: "{{ {} | r_pufky.data.v3(
+
+    _d=postgres___lib_d,
+    _data_d=postgres___lib_d ~ '/main',
+  ) }}"
+
+postgres___app: "{{ {} | r_pufky.data.v3(
+
+    _version=postgres___release._app,
+    _login_host='localhost',
+    _login_user='postgres',
+    _port=5432,
+    _socket_d='/var/run/postgresql',
+    _profile='/etc/profile.d/postgres',
+  ) }}"
+
+###############################################################################
+# Default Postgres User/Group
+###############################################################################
+
+postgres___group:
+  name: 'postgres'
+  gid: 300
+
+postgres___user:
+  name: 'postgres'
+  group: 'postgres'
+  groups:
+    - 'ssl-cert'  # Debian package adds postgres to this group via ssl-cert.
+  append: true
+  uid: 300
+  shell: '/bin/bash'
+  home: '/var/lib/postgresql'
+  comment: 'PostgreSQL administrator,,,'
+  create_home: false
+  password: '!'
+  password_lock: true
+  update_password: 'always'
+  expires: -1
+  system: true

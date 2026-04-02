@@ -11,28 +11,44 @@
 # If the database is newly created, automatically attempt to import the latest
 # backup if enabled.
 #
-# Imports using postgres_cfg_databases_backup_enable generate archives with a
-# single file in it; otherwise copy a single text .sql file from the controller
-# and execute import. If the import fails, cleanup the staged database.
+# Imports using postgres_flg_backup generate archives with a single file in it;
+# otherwise copy a single text .sql file from the controller and execute
+# import. If the import fails, cleanup the staged database.
+#
+# Use DB connection options specified in the DB object, defaulting to
+# postgres_srv_connection options for connection only options if needed:
+# * ca_cert
+# * connect_params
+# * login_host
+# * login_password
+# * login_port
+# * login_unix_socket
+# * login_user
+# * session_role
+# * ssl_cert
+# * ssl_key
+# * ssl_mode
 #
 # Args:
 #   db: Postgres DB to manage.
 
-- name: 'Manage | DB | {{ db.name }}'
+- name: '{{ "Manage | DB | " ~ db.name }}'
   community.postgresql.postgresql_db:
-    ca_cert: '{{
-        (db.ca_cert
-         if user.ca_cert is defined else
-         _postgres_srv_user_connection.raw.ca_cert) |
-        default(omit)
+    ca_cert: '{{ (
+
+          db.ca_cert
+          if user.ca_cert is defined else
+          postgres__srv._connection.ca_cert
+        ) | default(omit)
       }}'
     comment: '{{ db.comment | default(omit) }}'
     conn_limit: '{{ db.conn_limit | default(omit) }}'
-    connect_params: '{{
-        (db.connect_params
-         if user.connect_params is defined else
-         _postgres_srv_user_connection.raw.connect_params) |
-        default({})
+    connect_params: '{{ (
+
+          db.connect_params
+          if user.connect_params is defined else
+          postgres__srv._connection.connect_params
+        ) | default({})
       }}'
     dump_extra_args: '{{ db.dump_extra_args | default(omit) }}'
     encoding: '{{ db.encoding | default("UTF-8") }}'
@@ -41,62 +57,72 @@
     lc_collate: '{{ db.lc_collate | default("en_US.UTF-8") }}'
     lc_ctype: '{{ db.lc_ctype | default("en_US.UTF-8") }}'
     locale_provider: '{{ db.locale_provider | default(omit) }}'
-    login_host: '{{
-        (db.login_host
-         if user.login_host is defined else
-         _postgres_srv_user_connection.raw.login_host) |
-        default("localhost")
+    login_host: '{{ (
+
+          db.login_host
+          if user.login_host is defined else
+          postgres__srv._connection.login_host
+        ) | default(postgres__cfg._login_host)
       }}'
-    login_password: '{{
-        (db.login_password
-         if user.login_password is defined else
-         _postgres_srv_user_connection.raw.login_password) |
-        default(omit)
+    login_password: '{{ (
+
+          db.login_password
+          if user.login_password is defined else
+          postgres__srv._connection.login_password
+        ) | default(omit)
       }}'
-    login_unix_socket: '{{
-        (db.login_unix_socket
-         if user.login_unix_socket is defined else
-         _postgres_srv_user_connection.raw.login_unix_socket) |
-        default(_postgres_cfg_unix_socket_directories.raw[0])
+    login_port: '{{ (
+
+          db.login_port
+          if user.login_port is defined else
+          postgres__srv._connection.login_port
+        ) | default(postgres__cfg._port)
       }}'
-    login_user: '{{
-        (db.login_user
-         if user.login_user is defined else
-         _postgres_srv_user_connection.raw.login_user) |
-        default("postgres")
+    login_unix_socket: '{{ (
+
+          db.login_unix_socket
+          if user.login_unix_socket is defined else
+          postgres__srv._connection.login_unix_socket
+        ) | default(postgres__cfg._socket_d)
       }}'
-    maintenance_db: '{{ db.maintenance_db | default("postgres") }}'
+    login_user: '{{ (
+
+          db.login_user
+          if user.login_user is defined else
+          postgres__srv._connection.login_user
+        ) | default(postgres__cfg._login_user)
+      }}'
+    maintenance_db:
+      '{{ db.maintenance_db | default(postgres__cfg._login_user) }}'
     name: '{{ db.name }}'
-    owner: '{{ db.owner | default(_postgres_srv_user.raw) }}'
-    port: '{{
-        (db.port
-         if user.port is defined else
-         _postgres_srv_user_connection.raw.port) |
-        default(_postgres_cfg_port.raw)
+    owner: '{{ db.owner | default(postgres__srv._user) }}'
+    session_role: '{{ (
+
+          db.session_role
+          if user.session_role is defined else
+          postgres__srv._connection.session_role
+        ) | default(omit)
       }}'
-    session_role: '{{
-        (db.session_role
-         if user.session_role is defined else
-         _postgres_srv_user_connection.raw.session_role) |
-        default(omit)
+    ssl_cert: '{{ (
+
+          db.ssl_cert
+          if user.ssl_cert is defined else
+          postgres__srv._connection.ssl_cert
+        ) | default(omit)
       }}'
-    ssl_cert: '{{
-        (db.ssl_cert
-         if user.ssl_cert is defined else
-         _postgres_srv_user_connection.raw.ssl_cert) |
-        default(omit)
+    ssl_key: '{{ (
+
+          db.ssl_key
+          if user.ssl_key is defined else
+          postgres__srv._connection.ssl_key
+        ) | default(omit)
       }}'
-    ssl_key: '{{
-        (db.ssl_key
-         if user.ssl_key is defined else
-         _postgres_srv_user_connection.raw.ssl_key) |
-        default(omit)
-      }}'
-    ssl_mode: '{{
-        (db.ssl_mode
-         if user.ssl_mode is defined else
-         _postgres_srv_user_connection.raw.ssl_mode) |
-        default("prefer")
+    ssl_mode: '{{ (
+
+          db.ssl_mode
+          if user.ssl_mode is defined else
+          postgres__srv._connection.ssl_mode
+        ) | default("prefer")
       }}'
     state: '{{ db.state | default("present") }}'
     tablespace: '{{ db.tablespace | default(omit) }}'
@@ -105,73 +131,81 @@
     template: '{{ db.template | default("template0") }}'
     trust_input: '{{ db.trust_input | default(true) }}'
   become: true
-  become_user: '{{ _postgres_srv_user.raw }}'
-  register: _postgres_manage_db
-  # TODO(role): disabled until future ansible data tagging update.
-  # no_log: true  # passwords.
+  become_user: '{{ postgres__srv._user }}'
+  register: postgres__import
 
 - name: 'Manage | DB | parse import options'
   ansible.builtin.set_fact:
-    _postgres_db_created: '{{
-        true
-        if
-        "CREATE DATABASE" in _postgres_manage_db.executed_commands | join(" ")
-        else
-        false
-      }}'
-    _postgres_db_import_enable:
-      '{{ db.extensions.db_import.enable | default(false) }}'
-    _postgres_db_import_source:
-      '{{ db.extensions.db_import.source | default("") }}'
+    postgres__db: "{{ {} | r_pufky.data.v3(
+
+        _created=(
+          true
+          if
+          'CREATE DATABASE' in postgres__import.executed_commands | join(' ')
+          else
+          false
+        ),
+        _enable=db.extensions.db_import.enable | default(false),
+        _source=db.extensions.db_import.source | default(''),
+      ) }}"
 
 - name: 'Manage | DB | import'
-  when: _postgres_db_import_enable and _postgres_db_created
+  when: postgres__db._enable and postgres__db._created
   block:
     - name: 'Manage | DB | import | copy from controller'
-      when: _postgres_db_import_source | length > 0
+      when: postgres__db._source | length > 0
       ansible.builtin.copy:
-        src: '{{ _postgres_db_import_source }}'
+        src: '{{ postgres__db._source }}'
         dest: '/tmp/postgres_db_import.sql'
-        owner: '{{ _postgres_srv_user.raw }}'
-        group: '{{ _postgres_srv_group.raw }}'
+        owner: '{{ postgres__srv._user }}'
+        group: '{{ postgres__srv._group }}'
         mode: '0600'
         force: true
 
     - name: 'Manage | DB | import | copy from backups'
-      when: _postgres_db_import_source | length == 0
-      ansible.builtin.copy:
-        src: '{{
-            _postgres_cfg_databases_backup_dir.raw ~ "/" ~
-            db.name ~ "-latest.sql"
-          }}'
-        dest: '/tmp/postgres_db_import.sql'
-        remote_src: true
-        owner: '{{ _postgres_srv_user.raw }}'
-        group: '{{ _postgres_srv_group.raw }}'
-        mode: '0600'
-        force: true
-      become: true
-      become_user: '{{
-          _postgres_srv_user.raw
-          if _postgres_srv_user_data_manage_enable.raw else
-          "root"
-        }}'
+      when: postgres__db._source | length == 0
+      block:
+        - name: 'Manage | DB | import | copy from backups'
+          ansible.builtin.copy:
+            src:
+              '{{ postgres__cfg._backup_d ~ "/" ~ db.name ~ "-latest.sql" }}'
+            dest: '/tmp/postgres_db_import.sql'
+            remote_src: true
+            owner: '{{ postgres__srv._user }}'
+            group: '{{ postgres__srv._group }}'
+            mode: '0600'
+            force: true
+          become: true
+          become_user: '{{ postgres__srv._user }}'
+      rescue:
+        - name: 'Manage ⛑ | DB | import | copy from backups'
+          ansible.builtin.copy:
+            src:
+              '{{ postgres__cfg._backup_d ~ "/" ~ db.name ~ "-latest.sql" }}'
+            dest: '/tmp/postgres_db_import.sql'
+            remote_src: true
+            owner: '{{ postgres__srv._user }}'
+            group: '{{ postgres__srv._group }}'
+            mode: '0600'
+            force: true
 
     - name: 'Manage | DB | import | {{ db.name }}'
       community.postgresql.postgresql_db:
-        ca_cert: '{{
-            (db.ca_cert
-             if user.ca_cert is defined else
-             _postgres_srv_user_connection.raw.ca_cert) |
-            default(omit)
+        ca_cert: '{{ (
+
+              db.ca_cert
+              if user.ca_cert is defined else
+              postgres__srv._connection.ca_cert
+            ) | default(omit)
           }}'
         comment: '{{ db.comment | default(omit) }}'
         conn_limit: '{{ db.conn_limit | default(omit) }}'
-        connect_params: '{{
-            (db.connect_params
-             if user.connect_params is defined else
-             _postgres_srv_user_connection.raw.connect_params) |
-            default({})
+        connect_params: '{{ (
+
+              db.connect_params
+              if user.connect_params is defined else
+              postgres__srv._connection.connect_params
+            ) | default({})
           }}'
         dump_extra_args: '{{ db.dump_extra_args | default(omit) }}'
         encoding: '{{ db.encoding | default("UTF-8") }}'
@@ -180,62 +214,72 @@
         lc_collate: '{{ db.lc_collate | default("en_US.UTF-8") }}'
         lc_ctype: '{{ db.lc_ctype | default("en_US.UTF-8") }}'
         locale_provider: '{{ db.locale_provider | default(omit) }}'
-        login_host: '{{
-            (db.login_host
-             if user.login_host is defined else
-             _postgres_srv_user_connection.raw.login_host) |
-            default("localhost")
+        login_host: '{{ (
+
+              db.login_host
+              if user.login_host is defined else
+              postgres__srv._connection.login_host
+            ) | default(postgres__cfg._login_host)
           }}'
-        login_password: '{{
-            (db.login_password
-             if user.login_password is defined else
-             _postgres_srv_user_connection.raw.login_password) |
-            default(omit)
+        login_password: '{{ (
+
+              db.login_password
+              if user.login_password is defined else
+              postgres__srv._connection.login_password
+            ) | default(omit)
           }}'
-        login_unix_socket: '{{
-            (db.login_unix_socket
-             if user.login_unix_socket is defined else
-             _postgres_srv_user_connection.raw.login_unix_socket) |
-            default(_postgres_cfg_unix_socket_directories.raw[0])
+        login_port: '{{ (
+
+              db.login_port
+              if user.login_port is defined else
+              postgres__srv._connection.login_port
+            ) | default(postgres__cfg._port)
           }}'
-        login_user: '{{
-            (db.login_user
-             if user.login_user is defined else
-             _postgres_srv_user_connection.raw.login_user) |
-            default("postgres")
+        login_unix_socket: '{{ (
+
+              db.login_unix_socket
+              if user.login_unix_socket is defined else
+              postgres__srv._connection.login_unix_socket
+            ) | default(postgres__cfg._socket_d)
           }}'
-        maintenance_db: '{{ db.maintenance_db | default("postgres") }}'
+        login_user: '{{ (
+
+              db.login_user
+              if user.login_user is defined else
+              postgres__srv._connection.login_user
+            ) | default(postgres__cfg._login_user)
+          }}'
+        maintenance_db:
+          '{{ db.maintenance_db | default(postgres__cfg._login_user) }}'
         name: '{{ db.name }}'
-        owner: '{{ db.owner | default(_postgres_srv_user.raw) }}'
-        port: '{{
-            (db.port
-             if user.port is defined else
-             _postgres_srv_user_connection.raw.port) |
-            default(_postgres_cfg_port.raw)
+        owner: '{{ db.owner | default(postgres__srv._user) }}'
+        session_role: '{{ (
+
+              db.session_role
+              if user.session_role is defined else
+              postgres__srv._connection.session_role
+            ) | default(omit)
           }}'
-        session_role: '{{
-            (db.session_role
-             if user.session_role is defined else
-             _postgres_srv_user_connection.raw.session_role) |
-            default(omit)
+        ssl_cert: '{{ (
+
+              db.ssl_cert
+              if user.ssl_cert is defined else
+              postgres__srv._connection.ssl_cert
+            ) | default(omit)
           }}'
-        ssl_cert: '{{
-            (db.ssl_cert
-             if user.ssl_cert is defined else
-             _postgres_srv_user_connection.raw.ssl_cert) |
-            default(omit)
+        ssl_key: '{{ (
+
+              db.ssl_key
+              if user.ssl_key is defined else
+              postgres__srv._connection.ssl_key
+             ) | default(omit)
           }}'
-        ssl_key: '{{
-            (db.ssl_key
-             if user.ssl_key is defined else
-             _postgres_srv_user_connection.raw.ssl_key) |
-            default(omit)
-          }}'
-        ssl_mode: '{{
-            (db.ssl_mode
-             if user.ssl_mode is defined else
-             _postgres_srv_user_connection.raw.ssl_mode) |
-            default("prefer")
+        ssl_mode: '{{ (
+
+              db.ssl_mode
+              if user.ssl_mode is defined else
+              postgres__srv._connection.ssl_mode
+            ) | default("prefer")
           }}'
         state: 'restore'
         tablespace: '{{ db.tablespace | default(omit) }}'
@@ -244,9 +288,7 @@
         template: '{{ db.template | default("template0") }}'
         trust_input: '{{ db.trust_input | default(true) }}'
       become: true
-      become_user: '{{ _postgres_srv_user.raw }}'
-      # TODO(role): disabled until future ansible data tagging update.
-      # no_log: true  # passwords.
+      become_user: '{{ postgres__srv._user }}'
   always:
     - name: 'Manage | DB | import | remove staged files'
       ansible.builtin.file:

@@ -1,15 +1,38 @@
 ---
 - name: 'Prepare'
-  hosts: 'postgres-debian-13-user_data'
+  hosts: 'all'
   gather_facts: false
   tasks:
-    - name: 'Prepare | simulate user media restriction'
+    - name: 'Prepare | import role variables'
+      ansible.builtin.include_vars:
+        file: '{{
+            lookup("env", "MOLECULE_PROJECT_DIRECTORY") ~ "/vars/main.yml"
+          }}'
+
+    - name: 'Prepare | inject | backup directory'
       ansible.builtin.file:
-        path: '{{ item }}'
+        path: '/srv/postgres_backup'
         owner: 300
         group: 300
         mode: '0755'
         state: 'directory'
-      loop:
-        - '/var/lib/postgresql/17/main'
-        - '/var/lib/postgres_backup'
+
+    - name: 'Prepare | inject | set /var/lib/postgres_backup/skeleton.sql'
+      ansible.builtin.copy:
+        src: '{{
+            lookup("env", "MOLECULE_PROJECT_DIRECTORY") ~
+            "/molecule/files/skeleton.sql"
+          }}'
+        dest: '/srv/postgres_backup/skeleton.sql'
+        owner: 300
+        group: 300
+        mode: '0640'
+
+    - name: 'Prepare | inject | link skeleton-latest.sql ➔ skeleton.sql'
+      ansible.builtin.file:
+        src: '/srv/postgres_backup/skeleton.sql'
+        path: '/srv/postgres_backup/skeleton-latest.sql'
+        owner: 300
+        group: 300
+        mode: '0640'
+        state: 'link'

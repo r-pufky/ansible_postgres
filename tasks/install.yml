@@ -1,0 +1,156 @@
+---
+###############################################################################
+# Install
+###############################################################################
+# Postgres does not need to be stopped to update configuration, only restarted.
+
+- name: 'Install | filesystem | set service directories'
+  ansible.builtin.file:
+    path: '{{ postgres__etc._scripts_d }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0755'
+    state: 'directory'
+
+- name: 'Install | filesystem | set secured directories'
+  ansible.builtin.file:
+    path: '{{ postgres__etc._secure_conf_d }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0750'
+    state: 'directory'
+
+- name: 'Install | packages'
+  ansible.builtin.include_role:
+    name: 'r_pufky.deb.apt'
+  vars:
+    apt_packages:
+      - '{{ postgres___packages }}'
+    apt_sources: '{{ postgres___apt_sources }}'
+    apt_srv_package_update_cache: true
+
+- name: '{{  "Install | filesystem | set minimal " ~ postgres__etc._conf_d }}'
+  when: postgres__srv._conf_d | length == 0
+  block:
+    - name: '{{ "Install | filesystem | deploy " ~ postgres__etc._conf_d }}'
+      ansible.builtin.template:
+        src: '{{ item.src }}'
+        dest: '{{ postgres__etc._conf_d }}'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+      loop:
+        '{{ query("community.general.filetree", "templates/default/conf.d") }}'
+      loop_control:
+        label: '{{ item.path }}'
+      when: item.state == 'file'
+      register: postgres__local
+
+    - name: 'Install | filesystem | query remote files'
+      ansible.builtin.find:
+        paths: '{{ postgres__etc._conf_d }}'
+        file_type: 'file'
+        recurse: true
+      register: postgres__remote
+
+    - name: 'Install | filesystem | remove unmanaged files'
+      ansible.builtin.file:
+        path: '{{ item.path }}'
+        state: 'absent'
+      loop: '{{ postgres__remote.files }}'
+      loop_control:
+        label: '{{ item.path }}'
+      when: >
+        item.path not in postgres__local.results |
+        selectattr('dest', 'defined') |
+        map(attribute='dest') | list
+
+- name:
+    '{{ "Install | filesystem | set minimal " ~ postgres__etc._environment }}'
+  when: postgres__srv._environment | length == 0
+  ansible.builtin.template:
+    src: 'templates/default/environment'
+    dest: '{{ postgres__etc._environment }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'
+
+- name:
+    '{{ "Install | filesystem | set minimal " ~ postgres__etc._pg_ctl }}'
+  when: postgres__srv._pg_ctl | length == 0
+  ansible.builtin.template:
+    src: 'templates/default/pg_ctl.conf'
+    dest: '{{ postgres__etc._pg_ctl }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'
+
+- name:
+    '{{ "Install | filesystem | set minimal " ~ postgres__etc._pg_hba }}'
+  when: postgres__srv._pg_hba | length == 0
+  ansible.builtin.template:
+    src: 'templates/default/pg_hba.conf'
+    dest: '{{ postgres__etc._pg_hba }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0640'
+
+- name:
+    '{{ "Install | filesystem | set minimal " ~ postgres__etc._pg_ident }}'
+  when: postgres__srv._pg_ident | length == 0
+  ansible.builtin.template:
+    src: 'templates/default/pg_ident.conf'
+    dest: '{{ postgres__etc._pg_ident }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0640'
+
+- name:
+    '{{ "Install | filesystem | set minimal " ~ postgres__etc._postgresql }}'
+  when: postgres__srv._postgresql | length == 0
+  ansible.builtin.template:
+    src: 'templates/default/postgresql.conf'
+    dest: '{{ postgres__etc._postgresql }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'
+
+- name:
+    '{{ "Install | filesystem | set minimal " ~ postgres__etc._start }}'
+  when: postgres__srv._start | length == 0
+  ansible.builtin.template:
+    src: 'templates/default/start.conf'
+    dest: '{{ postgres__etc._start }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'
+
+- name: '{{ "Install | filesystem | set " ~ postgres__etc._owner_script }}'
+  ansible.builtin.template:
+    src: 'templates/scripts/postgres_owner.j2'
+    dest: '{{ postgres__etc._owner_script }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0770'
+
+# Create the data directory if set to alternative location.
+- name: '{{ "Install | filesystem | set " ~ postgres__cfg.__data_d }}'
+  block:
+    - name: '{{ "Install | filesystem | set " ~ postgres__cfg.__data_d }}'
+      ansible.builtin.file:
+        path: '{{ postgres__cfg.__data_d }}'
+        owner: '{{ postgres__srv._user }}'
+        group: '{{ postgres__srv._group }}'
+        mode: '0700'
+        state: 'directory'
+      become: true
+      become_user: '{{ postgres__srv._user }}'
+  rescue:
+    - name:
+        '{{ "Install ⛑ | filesystem | set " ~ postgres__cfg.__data_d }}'
+      ansible.builtin.file:
+        path: '{{ postgres__cfg.__data_d }}'
+        owner: '{{ postgres__srv._user }}'
+        group: '{{ postgres__srv._group }}'
+        mode: '0700'
+        state: 'directory'

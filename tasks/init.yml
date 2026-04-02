@@ -1,0 +1,49 @@
+---
+###############################################################################
+# Init
+###############################################################################
+# All Postgres storage locations for instances must be init'ed for DB service
+# to be successfully started for every instance. After rendering auto-generated
+# configs (or user configs), parse data directory and initialize.
+#
+# Cannot use 'psql -Atc "SHOW data_directory;"' as DB's are not running.
+#
+# Custom data directories require setting postgres shell environment correctly
+# to locate the install for command line operations.
+
+- name: '{{ "Install | filesystem | set " ~ postgres__cfg._profile }}'
+  ansible.builtin.template:
+    src: '{{
+        "templates/profile.d/postgres.j2"
+        if postgres__srv._profile | length == 0 else
+        postgres__srv._profile
+      }}'
+    dest: '{{ postgres__cfg._profile }}'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+
+- name: '{{ "Init | cmd | init " ~ postgres__cfg.__data_d }}'
+  block:
+    - name: '{{ "Init | cmd | init " ~ postgres__cfg.__data_d }}'
+      ansible.builtin.command:
+        argv:
+          - '{{ postgres__usr._initdb }}'
+          - '-D'
+          - '{{ postgres__cfg.__data_d }}'
+      args:
+        creates: '{{ postgres__cfg.__data_d ~ "/PG_VERSION" }}'
+      become: true
+      become_user: '{{ postgres__srv._user }}'
+  rescue:
+    - name: '{{ "Init ⛑ | cmd | init " ~ postgres__cfg.__data_d }}'
+      ansible.builtin.command:
+        argv:
+          - '{{ postgres__usr._initdb }}'
+          - '-D'
+          - '{{ postgres__cfg.__data_d }}'
+      args:
+        creates: '{{ postgres__cfg.__data_d ~ "/PG_VERSION" }}'
+
+- name: 'Init | start'
+  ansible.builtin.include_tasks: 'start.yml'

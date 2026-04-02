@@ -1,0 +1,61 @@
+---
+###############################################################################
+# Backup
+###############################################################################
+# Deploy backup services. Backup directory may be network mounted.
+
+- name: 'Backup | enable'
+  when: postgres_flg_backup
+  block:
+    - name: 'Backup | enable | set backup directory'
+      block:
+        - name: 'Backup | filesystem | set backup directory'
+          ansible.builtin.file:
+            path: '{{ postgres__cfg._backup_d }}'
+            owner: '{{ postgres__srv._user }}'
+            group: '{{ postgres__srv._group }}'
+            mode: '0750'
+            recurse: false
+            state: 'directory'
+          become: true
+          become_user: '{{ postgres__srv._user }}'
+      rescue:
+        - name: 'Backup ⛑ | filesystem | set backup directory'
+          ansible.builtin.file:
+            path: '{{ postgres__cfg._backup_d }}'
+            owner: '{{ postgres__srv._user }}'
+            group: '{{ postgres__srv._group }}'
+            mode: '0750'
+            recurse: false
+            state: 'directory'
+
+    - name: '{{ "Backup | enable | set " ~ postgres__etc._backup_script }}'
+      ansible.builtin.template:
+        src: 'templates/scripts/postgres_backup.j2'
+        dest: '{{ postgres__etc._backup_script }}'
+        owner: '{{ postgres__srv._user }}'
+        group: '{{ postgres__srv._group }}'
+        mode: '0770'
+
+    - name: 'Backup | systemd | enable backup'
+      notify: 'Handlers | enable postgres_backup'
+      ansible.builtin.template:
+        src: '{{ "systemd/" ~ item ~ ".j2" }}'
+        dest: '{{ "/etc/systemd/system/" ~ item }}'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+      loop:
+        - 'postgres_backup.service'
+        - 'postgres_backup.timer'
+
+- name: 'Backup | systemd | disable backup'
+  when: not postgres_flg_backup
+  notify: 'Handlers | disable postgres_backup'
+  ansible.builtin.file:
+    dest: '{{ item }}'
+    state: 'absent'
+  loop:
+    - '{{ postgres__etc._backup_script }}'
+    - '/etc/systemd/system/postgres_backup.service'
+    - '/etc/systemd/system/postgres_backup.timer'

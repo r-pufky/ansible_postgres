@@ -1,0 +1,31 @@
+---
+###############################################################################
+# Handlers
+###############################################################################
+
+- name: 'Handlers | load postgres_backup'
+  listen:
+    - 'Handlers | enable postgres_backup'
+  ansible.builtin.systemd:
+    name: '{{ item }}'
+    enabled: true
+    daemon_reload: true
+  loop:
+    - 'postgres_backup.service'
+    - 'postgres_backup.timer'
+
+- name: 'Handlers | postgres_backup.timer (tick)'
+  listen:
+    - 'Handlers | enable postgres_backup'
+  ansible.builtin.systemd:
+    name: 'postgres_backup.timer'
+    state: 'started'
+
+- name: 'Handlers | disable postgres_backup'
+  ansible.builtin.systemd:
+    name: '{{ item }}'
+    enabled: false
+    state: 'stopped'
+  loop:
+    - 'postgres_backup.service'
+    - 'postgres_backup.timer'

@@ -1,0 +1,12 @@
+[Unit]
+Description=Postgres backup service.
+Requires=postgres_backup.timer
+
+[Service]
+Type=simple
+ExecStart={{ postgres__etc._backup_script }}
+User={{ postgres__srv._user }}
+Group={{ postgres__srv._group }}
+
+[Install]
+WantedBy=multi-user.target

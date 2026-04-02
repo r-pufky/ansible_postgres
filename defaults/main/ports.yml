@@ -7,7 +7,7 @@
 # Reference:
 # * https://github.com/r-pufky/ansible_ufw
 
-postgres_srv_ports:
+postgres_ports:
   - proto: 'tcp'
     from_ip: 'any'
     to_port: 5432

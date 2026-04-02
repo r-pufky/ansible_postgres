@@ -1,64 +1,238 @@
 ---
-# yamllint disable rule:line-length
 ###############################################################################
 # Postgres Prep
 ###############################################################################
-# Prep Postgres variables for installation and upgrade. SSL certificates and
-# Locales must be installed to manage locales specified in databases creation.
+# SSL certificates and Locales must be installed to manage locales specified in
+# databases creation and postgres service user creation.
 #
-# Postgres does not need to be stopped to update configuration, only restarted.
+# Postgres installs to locations based on the installed version, so all paths
+# need to be dynamically generated for the requested install version.
 
-- name: 'Install | pre-requisite packages'
+- name: 'Prep | fact | record start time'
+  ansible.builtin.set_fact:
+    postgres__srv: "{{ postgres___release | r_pufky.data.v3(
+
+        _start_time=now(utc=True, fmt='%Y-%m-%dT%H%M%S'),
+
+        _conf_d=postgres_srv_conf_d | regex_replace('\\/$', ''),
+        _secure_conf_d=postgres_srv_secure_conf_d,
+        _environment=postgres_srv_environment,
+        _pg_ctl=postgres_srv_pg_ctl,
+        _pg_hba=postgres_srv_pg_hba,
+        _pg_ident=postgres_srv_pg_ident,
+        _postgresql=postgres_srv_postgresql,
+        _start=postgres_srv_start,
+
+        _profile=postgres_srv_profile,
+        _purge=postgres_srv_purge,
+        _upgrade=postgres_srv_upgrade,
+
+        _user=postgres_srv_user,
+        _group=postgres_srv_group,
+        _connection=postgres_srv_connection,
+      ) }}"
+    postgres__cfg: "{{ postgres___app | r_pufky.data.v3(
+
+        _version=postgres_srv_version,
+
+        _etc_d='/etc/postgresql/' ~ postgres_srv_version,
+        _usr_d='/usr/lib/postgresql/' ~ postgres_srv_version,
+        _lib_d='/var/lib/postgresql/' ~ postgres_srv_version,
+
+        _dbs=postgres_cfg_dbs,
+        _users=postgres_cfg_users,
+
+        _backup_all=postgres_cfg_backup_all,
+        _backup_individual=postgres_cfg_backup_individual,
+        _backup_d=postgres_cfg_backup_d | regex_replace('\\/$', ''),
+        _backup_owner=postgres_cfg_backup_owner,
+        _backup_group=postgres_cfg_backup_group,
+        _backup_schedule=postgres_cfg_backup_schedule,
+        _backup_opts=postgres_cfg_backup_opts | join(' '),
+      ) }}"
+
+- name: 'Prep | fact | parse metadata'
+  ansible.builtin.set_fact:
+    postgres__etc: "{{ {} | r_pufky.data.v3(
+
+        _d=postgres__cfg._etc_d,
+
+        _scripts_d=postgres__cfg._etc_d ~ '/scripts',
+        _backup_script=postgres__cfg._etc_d ~ '/scripts/postgres_backup',
+        _owner_script=postgres__cfg._etc_d ~ '/scripts/postgres_owner',
+
+        _main_d=postgres___etc_d ~ '/main',
+        _conf_d=postgres__cfg._etc_d ~ '/main/conf.d',
+        _secure_conf_d=postgres__cfg._etc_d ~ '/main/secure.conf.d',
+        _environment=postgres__cfg._etc_d ~ '/main/environment',
+        _pg_ctl=postgres__cfg._etc_d ~ '/main/pg_ctl.conf',
+        _pg_hba=postgres__cfg._etc_d ~ '/main/pg_hba.conf',
+        _pg_ident=postgres__cfg._etc_d ~ '/main/pg_ident.conf',
+        _postgresql=postgres__cfg._etc_d ~ '/main/postgresql.conf',
+        _start=postgres__cfg._etc_d ~ '/main/start.conf',
+      ) }}"
+    postgres__usr: "{{ {} | r_pufky.data.v3(
+
+        _d=postgres__cfg._usr_d,
+        _bin_d=postgres__cfg._usr_d ~ '/bin',
+        _initdb=postgres__cfg._usr_d ~ '/bin/initdb',
+      ) }}"
+    postgres__lib: "{{ {} | r_pufky.data.v3(
+
+        _d=postgres__cfg._lib_d,
+        _data_d=postgres__cfg._lib_d ~ '/main',
+      ) }}"
+
+# Required for user creation and locale setup.
+- name: 'Prep | pre-requisite packages'
   ansible.builtin.include_role:
     name: 'r_pufky.deb.apt'
   vars:
     apt_packages:
-      - '{{ postgres_role_prep_packages }}'
-    apt_package_update_cache: true
+      - '{{ postgres___prep_packages }}'
+    apt_srv_package_update_cache: true
 
-- name: 'Prep | manage users'
-  when: _postgres_srv_create_user.raw
-  ansible.builtin.include_role:
-    name: 'r_pufky.deb.users'
-    tasks_from: 'role_account_add.yml'
-  vars:
-    users_role_user: '{{ postgres_role_user }}'
-    users_role_group: '{{ postgres_role_group }}'
+- name: '{{ "Prep | account | query user " ~ postgres__srv._user }}'
+  ansible.builtin.command: '{{ "id " ~ postgres__srv._user }}'
+  failed_when: false
+  register: postgres__cfg_check
+  changed_when: postgres__cfg_check.rc > 0
 
-- name: 'Prep | enumerate system user {{ _postgres_srv_user.raw }}'
+- name: '{{ "Prep | account | query group " ~ postgres__srv._group }}'
+  ansible.builtin.command: '{{ "groups " ~ postgres__srv._group }}'
+  failed_when: false
+  register: postgres__group_check
+  changed_when: postgres__group_check.rc > 0
+
+- name: '{{ "Prep | account | create group " ~ postgres__srv._group }}'
+  when: postgres__group_check.rc != 0
+  ansible.builtin.group:
+    gid: '{{ postgres___group.gid }}'
+    name: '{{ postgres___group.name }}'
+    state: 'present'
+
+- name: '{{ "Prep | account | create user " ~ postgres__srv._user }}'
+  when: postgres__cfg_check.rc != 0
   ansible.builtin.user:
-    name: '{{ _postgres_srv_user.raw }}'
+    name: '{{ postgres___user.name }}'
+    group: '{{ postgres___user.group }}'
+    uid: '{{ postgres___user.uid }}'
+    shell: '{{ postgres___user.shell }}'
+    home: '{{ postgres___user.home }}'
+    create_home: '{{ postgres___user.create_home }}'
+    password: '{{ postgres___user.password }}'
+    password_lock: '{{ postgres___user.password_lock }}'
+    update_password: '{{ postgres___user.update_password }}'
+    expires: '{{ postgres___user.expires }}'
+    system: '{{ postgres___user.system }}'
+
+# Pre-existing users may have a different UID/GID/Home.
+- name: '{{ "Prep | account | enumerate " ~ postgres__srv._user }}'
+  ansible.builtin.user:
+    name: '{{ postgres__srv._user }}'
   check_mode: true
   changed_when: false
-  register: _postgres_srv_user_query
+  register: postgres__cfg_query
 
-- name: 'Prep | parse system user UID/GID'
+- name: 'Prep | fact | parse service UID/GID'
   ansible.builtin.set_fact:
-    _postgres_srv_user: '{{
-        _postgres_srv_user |
-        combine({"_uid": _postgres_srv_user_query.uid})
-      }}'
-    _postgres_srv_group: '{{
-        _postgres_srv_group |
-        combine({"_gid": _postgres_srv_user_query.group})
-      }}'
+    postgres__cfg: "{{ postgres__cfg | r_pufky.data.v3(
 
-- name: 'Prep | set debconf postrm_purge_data'
+        _uid=postgres__cfg_query.uid,
+        _gid=postgres__cfg_query.group,
+      ) }}"
+
+- name: 'Prep | debconf | set postrm_purge_data'
   ansible.builtin.debconf:
-    name: '{{ "postgresql-" ~ _postgres_srv_version.raw }}'
-    question: '{{ _postgres_srv_purge_enable._question }}'
+    name: '{{ "postgresql-" ~ postgres__cfg._version }}'
+    question:
+      '{{ "postgresql-" ~ postgres__cfg._version ~ "/postrm_purge_data" }}'
     vtype: 'boolean'
-    value: '{{ _postgres_srv_purge_enable._value }}'
+    value: '{{ postgres__srv._purge }}'
 
-- name: 'Prep | set debconf auto_upgrade'
+- name: 'Prep | debconf | set auto_upgrade'
   ansible.builtin.debconf:
     name: 'postgresql'
-    question: '{{ _postgres_srv_auto_upgrade_enable._question }}'
+    question: 'postgresql/auto_upgrade'
     vtype: 'boolean'
-    value: '{{ _postgres_srv_auto_upgrade_enable._value }}'
+    value: '{{ postgres__srv._upgrade }}'
+
+
+# Render configuration locally and resolve configured service paths.
+- name: 'Prep | fact | resolve postgresql.conf'
+  ansible.builtin.set_fact:
+    postgres__srv: "{{ postgres__srv | r_pufky.data.v3(
+
+        _tmpl_cfg=lookup(
+          'ansible.builtin.template',
+          postgres__srv._postgresql
+          if postgres__srv._postgresql | length > 0 else
+          'templates/default/postgresql.conf'
+        ),
+      ) }}"
+
+- name: 'Prep | fact | parse configured options'
+  ansible.builtin.set_fact:
+    postgres__cfg: "{{ postgres__cfg | r_pufky.data.v3(
+
+        __data_d=(
+          postgres__srv._tmpl_cfg |
+          regex_search(\"^data_directory\\s*=\\s*'(.*?)'\", '\\1',
+                       multiline=True) |
+          default(postgres__lib._data_d) | first
+        ),
+        __dbs_collate=(
+          postgres__cfg._dbs |
+          map(attribute='lc_collate', default='en_US.UTF-8') |
+          unique
+        ),
+        __dbs_ctype=(
+          postgres__cfg._dbs |
+          map(attribute='lc_ctype', default='en_US.UTF-8') |
+          unique
+        ),
+        __lc_messages=(
+          postgres__srv._tmpl_cfg |
+          regex_search(\"^lc_messages\\s*=\\s*'(.*?)'\", '\\1',
+                       multiline=True) |
+          default('C.UTF-8') | first
+        ),
+        __lc_monetary=(
+          postgres__srv._tmpl_cfg |
+          regex_search(\"^lc_monetary\\s*=\\s*'(.*?)'\", '\\1',
+                       multiline=True) |
+          default('C.UTF-8') | first
+        ),
+        __lc_numeric=(
+          postgres__srv._tmpl_cfg |
+          regex_search(\"^lc_numeric\\s*=\\s*'(.*?)'\", '\\1',
+                       multiline=True) |
+          default('C.UTF-8') | first
+        ),
+        __lc_time=(
+          postgres__srv._tmpl_cfg |
+          regex_search(\"^lc_time\\s*=\\s*'(.*?)'\", '\\1',
+                       multiline=True) |
+          default('C.UTF-8') | first
+        ),
+      ) }}"
+
+- name: 'Prep | fact | parse locales'
+  ansible.builtin.set_fact:
+    postgres__cfg: "{{ postgres__cfg | r_pufky.data.v3(
+
+        __locales=(
+          postgres__cfg.__dbs_collate |
+          union(postgres__cfg.__dbs_ctype) |
+          union([postgres__cfg.__lc_messages]) |
+          union([postgres__cfg.__lc_monetary]) |
+          union([postgres__cfg.__lc_numeric]) |
+          union([postgres__cfg.__lc_time])
+        ),
+      ) }}"
 
 - name: 'Prep | configure locales'
   community.general.locale_gen:
     name: '{{ item }}'
     state: 'present'
-  loop: '{{ _postgres.locales }}'
+  loop: '{{ postgres__cfg.__locales }}'

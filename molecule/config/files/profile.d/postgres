@@ -1,0 +1,4 @@
+# Test custom environment.
+
+export PGDATA='/var/lib/postgresql/17/main'
+export PATH='$PATH:/usr/lib/postgresql/17/bin'

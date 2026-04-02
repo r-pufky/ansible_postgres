@@ -1,23 +1,22 @@
 ---
-- name: 'Assert'
-  ansible.builtin.import_tasks: 'assert.yml'
-- name: 'Annotate'
-  ansible.builtin.import_tasks: 'annotate.yml'
 - name: 'Prep'
   ansible.builtin.include_tasks: 'prep.yml'
 
 - name: 'Install'
-  ansible.builtin.include_role:
-    name: 'r_pufky.deb.apt'
-  vars:
-    apt_packages:
-      - '{{ postgres_role_packages }}'
-    apt_sources: '{{ postgres_role_apt_sources }}'
-    apt_package_update_cache: true
+  when: postgres_flg_install
+  ansible.builtin.include_tasks: 'install.yml'
 
 - name: 'Config'
+  when: postgres_flg_config
   ansible.builtin.include_tasks: 'config.yml'
+
+- name: 'Backup'
+  when: postgres_flg_backup
+  ansible.builtin.include_tasks: 'backup.yml'
+
+- name: 'Init'
+  ansible.builtin.include_tasks: 'init.yml'
 - name: 'Manage'
   ansible.builtin.include_tasks: 'manage.yml'
-- name: 'Validate'
-  ansible.builtin.include_tasks: 'validate.yml'
+- name: 'Start'
+  ansible.builtin.include_tasks: 'start.yml'

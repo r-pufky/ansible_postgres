@@ -1,16 +1,15 @@
 ---
+# yamllint disable rule:line-length
 ###############################################################################
 # Postgres Config
 ###############################################################################
-# Create user specified locations and initialize data (DB) location if it is
-# not already done. Set global shell environment profile and write
-# configuration to specified locations. Restart service to apply service
-# changes (service must have new settings loaded to apply security, user, and
-# database changes).
-#
 # Data locations may be mounted over network (with only postgres user and
 # everything else mapping to nobody/nogroup). Execute commands touching those
 # root mount points as postgres user to ensure they can be read or written.
+#
+# Postgres will refuse to start with any invalid configuration option, even for
+# options that are deprecated (using a new template for an older version) or
+# options that don't exist yet (using a current template for a new release).
 #
 # Default service does not log configuration errors on startup. This must be
 # done manually to see what configuration issues are occurring. With a default
@@ -23,241 +22,129 @@
 #
 # Reference:
 # * https://www.postgresql.org/docs/current/config-setting.html
+# * https://www.postgresql.org/docs/current/config-setting.html#CONFIG-SETTING-NAMES-VALUES
+# yamllint enable rule:line-length
 
-- name: 'Config | check data directory initialization'
-  ansible.builtin.stat:
-    path: '{{ _postgres_cfg_data_directory.raw }}'
-  become: true
-  become_user: '{{
-      _postgres_srv_user.raw
-      if _postgres_srv_user_data_manage_enable.raw else
-      "root"
-    }}'
-  register: _postgres_init
-
-- name: 'Config | initialize data directory'
-  when: not _postgres_init.stat.exists
-  ansible.builtin.command:
-    argv:
-      - '{{ _postgres_cfg_data_directory._initdb }}'
-      - '-D'
-      - '{{ _postgres_cfg_data_directory.raw }}'
-  become: true
-  become_user: '{{ _postgres_srv_user.raw }}'
-  changed_when: true
-
-- name: 'Config | enable backups'
-  when: _postgres_cfg_databases_backup_enable.raw
-  block:
-    - name: 'Config | enable backups | set backup directory'
-      ansible.builtin.file:
-        dest: '{{ _postgres_cfg_databases_backup_dir.raw }}'
-        owner: '{{ _postgres_srv_user._uid }}'
-        group: '{{ _postgres_srv_group._gid }}'
-        mode: '0755'
-        state: 'directory'
-
-    - name: 'Config | enable backups | set scripts directory'
-      ansible.builtin.file:
-        dest: '{{ _postgres.scripts }}'
-        owner: '{{ _postgres_srv_user._uid }}'
-        group: '{{ _postgres_srv_group._gid }}'
-        mode: '0755'
-        state: 'directory'
-
-    - name: 'Config | enable backups | set backup script'
-      ansible.builtin.template:
-        src: 'postgres_backup.j2'
-        dest: '{{ _postgres_cfg_databases_backup_enable._backup_script }}'
-        owner: '{{ _postgres_srv_user._uid }}'
-        group: '{{ _postgres_srv_group._gid }}'
-        mode: '{{ _postgres_cfg_databases_backup_enable._perms }}'
-
-    - name: 'Config | enable backups | create backup service'
-      ansible.builtin.include_role:
-        name: 'r_pufky.deb.systemd'
-      vars:
-        systemd_services:
-          - name: 'postgres_backup'
-            state: 'present'
-            drop_in: false
-            unit:
-              description: 'Postgres backup service.'
-              requires: ['postgres_backup.timer']
-            service:
-              type: 'simple'
-              exec_start:
-                - '{{
-                    _postgres_cfg_databases_backup_enable._backup_script
-                  }}'
-            exec:
-              user: '{{ _postgres_srv_user.raw }}'
-              group: '{{ _postgres_srv_group.raw }}'
-        systemd_timers:
-          - name: 'postgres_backup'
-            state: 'present'
-            drop_in: false
-            unit:
-              description: 'Postgres backup service timer.'
-            timer:
-              unit: 'postgres_backup.service'
-              on_calendar:
-                - '{{ _postgres_cfg_databases_backup_schedule.raw }}'
-            install:
-              wanted_by: ['timers.target']
-
-- name: 'Config | disable backups'
-  when: not _postgres_cfg_databases_backup_enable.raw
-  block:
-    - name: 'Config | disable backups | set backup script'
-      ansible.builtin.file:
-        dest: '{{ _postgres_cfg_databases_backup_enable._backup_script }}'
-        state: 'absent'
-
-    - name: 'Config | disable backups | remove backup service'
-      ansible.builtin.include_role:
-        name: 'r_pufky.deb.systemd'
-      vars:
-        systemd_services:
-          - name: 'postgres_backup'
-            state: 'absent'
-            drop_in: false
-        systemd_timers:
-          - name: 'postgres_backup'
-            state: 'absent'
-            drop_in: false
-
-- name: 'Config | create data directory'
-  ansible.builtin.file:
-    path: '{{ _postgres_cfg_data_directory.raw }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_data_directory._perms }}'
-    state: 'directory'
-  become: true
-  become_user: '{{
-      _postgres_srv_user.raw
-      if _postgres_srv_user_data_manage_enable.raw else
-      "root"
-    }}'
-
-- name: 'Config | create HBA directory'
-  ansible.builtin.file:
-    path: '{{ _postgres_cfg_hba_file._hba_dir }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_hba_file._hba_dir_perms }}'
-    state: 'directory'
-
-- name: 'Config | create ident directory'
-  ansible.builtin.file:
-    path: '{{ _postgres_cfg_ident_file._ident_dir }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_ident_file._ident_dir_perms }}'
-    state: 'directory'
-
-- name: 'Config | create PID directory'
-  ansible.builtin.file:
-    path: '{{ _postgres_cfg_external_pid_file._pid_dir }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_external_pid_file._perms }}'
-    state: 'directory'
-
-# Custom data directories require setting shell environments correctly so they
-# can be used (e.g. further in the role to manage postgres database).
-- name: 'Config | set postgres global environment profile'
-  when: _postgres_srv_profile_path.raw | length == 0
+- name: '{{ "Config | filesystem | deploy " ~ postgres__etc._conf_d }}'
   ansible.builtin.template:
-    src: 'postgres.j2'
-    dest: '{{ _postgres_srv_profile_path._dest }}'
-    owner: 'root'
-    group: 'root'
-    mode: '{{ _postgres_srv_profile_path._perms }}'
+    src: '{{ item.src }}'
+    dest: '{{ postgres__etc._conf_d }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'
+  loop:
+    '{{ query("community.general.filetree", postgres__srv._conf_d) }}'
+  loop_control:
+    label: '{{ item.path }}'
+  when: item.state == 'file'
+  register: postgres__local
 
-- name: 'Config | set custom postgres global environment profile'
-  when: _postgres_srv_profile_path.raw | length > 0
-  ansible.builtin.copy:
-    src: '{{ _postgres_srv_profile_path._src }}'
-    dest: '{{ _postgres_srv_profile_path._dest }}'
-    owner: 'root'
-    group: 'root'
-    mode: '{{ _postgres_srv_profile_path._perms }}'
-    force: true
+- name: 'Config | filesystem | query remote files'
+  ansible.builtin.find:
+    paths: '{{ postgres__etc._conf_d }}'
+    file_type: 'file'
+    recurse: true
+  register: postgres__remote
 
-- name: 'Config | set database owner script'
+- name: 'Config | filesystem | remove unmanaged files'
+  ansible.builtin.file:
+    path: '{{ item.path }}'
+    state: 'absent'
+  loop: '{{ postgres__remote.files }}'
+  loop_control:
+    label: '{{ item.path }}'
+  when: >
+    item.path not in postgres__local.results | selectattr('dest', 'defined') |
+    map(attribute='dest') | list
+
+- name: '{{ "Config | filesystem | deploy " ~ postgres__etc._secure_conf_d }}'
   ansible.builtin.template:
-    src: 'postgres_owner.j2'
-    dest: '{{ _postgres_cfg_databases._owner_script }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_databases._perms }}'
+    src: '{{ item.src }}'
+    dest: '{{ postgres__etc._secure_conf_d }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'
+  loop:
+    '{{ query("community.general.filetree", postgres__srv._secure_conf_d) }}'
+  loop_control:
+    label: '{{ item.path }}'
+  when: item.state == 'file'
+  register: postgres__local
 
-- name: 'Config | set conf.d'
-  when: _postgres_srv_confd_path.raw | length > 0
-  ansible.builtin.copy:
-    src: '{{ _postgres_srv_confd_path._src }}'
-    dest: '{{ _postgres_srv_confd_path._dest }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_srv_confd_path._perms }}'
-    force: true
+- name: 'Config | filesystem | query remote files'
+  ansible.builtin.find:
+    paths: '{{ postgres__etc._secure_conf_d }}'
+    file_type: 'file'
+    recurse: true
+  register: postgres__remote
 
-- name: 'Config | set environment'
+- name: 'Config | filesystem | remove unmanaged files'
+  ansible.builtin.file:
+    path: '{{ item.path }}'
+    state: 'absent'
+  loop: '{{ postgres__remote.files }}'
+  loop_control:
+    label: '{{ item.path }}'
+  when: >
+    item.path not in postgres__local.results | selectattr('dest', 'defined') |
+    map(attribute='dest') | list
+
+- name:
+    '{{ "Config | filesystem | set " ~ postgres__etc._environment }}'
+  when: postgres__etc._environment | length > 0
   ansible.builtin.template:
-    src: 'environment.j2'
-    dest: '{{ _postgres_cfg_environment._dest }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_environment._perms }}'
-
-- name: 'Config | set postgresql.conf'
-  ansible.builtin.template:
-    src: 'postgresql.conf.j2'
-    dest: '{{ _postgres.postgresql }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
+    src: '{{ postgres__srv._environment }}'
+    dest: '{{ postgres__etc._environment }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
     mode: '0644'
 
-- name: 'Config | set pg_ctl.conf'
+- name:
+    '{{ "Config | filesystem | set " ~ postgres__etc._pg_ctl }}'
+  when: postgres__etc._pg_ctl | length > 0
   ansible.builtin.template:
-    src: 'pg_ctl.conf.j2'
-    dest: '{{ _postgres_cfg_ctl._file }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_ctl._perms }}'
+    src: '{{ postgres__srv._pg_ctl }}'
+    dest: '{{ postgres__etc._pg_ctl }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'
 
-- name: 'Config | set pg_hba.conf'
+- name:
+    '{{ "Config | filesystem | set " ~ postgres__etc._pg_hba }}'
+  when: postgres__etc._pg_hba | length > 0
   ansible.builtin.template:
-    src: 'pg_hba.conf.j2'
-    dest: '{{ _postgres_cfg_hba_file.raw }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_hba_file._perms }}'
+    src: '{{ postgres__srv._pg_hba }}'
+    dest: '{{ postgres__etc._pg_hba }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0640'
 
-- name: 'Config | set pg_ident.conf'
+- name:
+    '{{ "Config | filesystem | set " ~ postgres__etc._pg_ident }}'
+  when: postgres__etc._pg_ident | length > 0
   ansible.builtin.template:
-    src: 'pg_ident.conf.j2'
-    dest: '{{ _postgres_cfg_ident_file.raw }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_cfg_ident_file._perms }}'
+    src: '{{ postgres__srv._pg_ident }}'
+    dest: '{{ postgres__etc._pg_ident }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0640'
 
-- name: 'Config | set start.conf'
+- name:
+    '{{ "Config | filesystem | set " ~ postgres__etc._postgresql }}'
+  when: postgres__etc._postgresql | length > 0
   ansible.builtin.template:
-    src: 'start.conf.j2'
-    dest: '{{ _postgres_srv_startup._dest }}'
-    owner: '{{ _postgres_srv_user._uid }}'
-    group: '{{ _postgres_srv_group._gid }}'
-    mode: '{{ _postgres_srv_startup._perms }}'
+    src: '{{ postgres__srv._postgresql }}'
+    dest: '{{ postgres__etc._postgresql }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'
 
-- name: 'Config | start services'
-  ansible.builtin.systemd:
-    name: '{{ item }}'
-    enabled: true
-    daemon_reload: true  # daemon-reload required for start.conf.
-    state: 'restarted'
-  failed_when: false
-  loop:
-    - 'postgresql.service'
+- name:
+    '{{ "Config | filesystem | set " ~ postgres__etc._start }}'
+  when: postgres__etc._start | length > 0
+  ansible.builtin.template:
+    src: '{{ postgres__srv._start }}'
+    dest: '{{ postgres__etc._start }}'
+    owner: '{{ postgres__srv._user }}'
+    group: '{{ postgres__srv._group }}'
+    mode: '0644'

@@ -1,15 +1,12 @@
 ---
 ###############################################################################
-# Default
+# Config
 ###############################################################################
-# Default values results in running service.
+# Re-run tests when config, or restore is changed.
 #
 # Tests:
-# * Default installation results in a running Postgres server instance.
-# * Configuration files with auto-generated default options are correct.
-# * Backup service is configured and running (via start.yml).
-# * Database creation and import from auto-backup works (skeleton).
-# * Imported database has ownership permission set properly from shell script.
+# * Running Postgres server instance.
+# * Configuration files with options are rendered appropriately based on type.
 
 dependency:
   name: 'galaxy'
@@ -26,7 +23,7 @@ provisioner:
   inventory:
     group_vars:
       all:
-        postgres_flg_backup: true
+        postgres_flg_config: true
         postgres_cfg_users:
           - name: 'example'
             host: 'localhost'
@@ -35,8 +32,6 @@ provisioner:
             append_privs: false
             encrypted: true
             extensions:
-              database_owner:
-                - 'skeleton'
               owner:
                 - login_db: 'test1'
                   obj_type: 'table'
@@ -56,13 +51,44 @@ provisioner:
             owner: 'example'
           - name: 'test2'
             owner: 'postgres'
-          - name: 'skeleton'
-            owner: 'example'
-            extensions:
-              db_import:
-                enable: true
+        postgres_srv_conf_d: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/conf.d"
+          }}'
+        postgres_srv_secure_conf_d: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/secure.conf.d"
+          }}'
+        postgres_srv_environment: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/main/environment"
+          }}'
+        postgres_srv_pg_ctl: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/main/pg_ctl.conf"
+          }}'
+        postgres_srv_pg_hba: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/main/pg_hba.conf"
+          }}'
+        postgres_srv_pg_ident: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/main/pg_ident.conf"
+          }}'
+        postgres_srv_postgresql: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/main/postgresql.conf"
+          }}'
+        postgres_srv_start: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/main/start.conf"
+          }}'
+        postgres_srv_profile: '{{
+            lookup("env", "MOLECULE_SCENARIO_DIRECTORY") ~
+            "/files/profile.d/postgres"
+          }}'
 platforms:
-  - name: 'postgres-default'
+  - name: 'postgres-config'
     image: 'ghcr.io/hifis-net/debian-systemd:13'
     systemd: 'always'
     volumes:

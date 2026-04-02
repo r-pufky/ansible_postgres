@@ -1,0 +1,88 @@
+---
+- name: 'Verify database'
+  hosts: 'all'
+  gather_facts: false
+  tasks:
+    - name: 'Verify | import role variables'
+      ansible.builtin.include_vars:
+        file: '{{
+            lookup("env", "MOLECULE_PROJECT_DIRECTORY") ~ "/vars/main.yml"
+          }}'
+
+    - name: 'Verify | SQL | query user example'
+      community.postgresql.postgresql_query:
+        login_db: 'postgres'
+        query: 'select * from pg_catalog.pg_user where usename=%(user)s'
+        named_args:
+          user: 'example'
+        login_host: 'localhost'
+        login_unix_socket: '/var/run/postgresql'
+        login_user: 'postgres'
+        login_port: '5432'
+      become: true
+      become_user: 'postgres'
+      register: postgres__test_query
+
+    - name: 'Verify | assert | assert user example created'
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - postgres__test_query.rowcount == 1
+        fail_msg: '✘ example user does not exist.'
+
+    - name: 'Verify | SQL | query DB test1'
+      community.postgresql.postgresql_query:
+        login_db: 'postgres'
+        query: 'select datname from pg_database where datname=%(db)s'
+        named_args:
+          db: 'test1'
+        login_host: 'localhost'
+        login_unix_socket: '/var/run/postgresql'
+        login_user: 'postgres'
+        login_port: '5432'
+      become: true
+      become_user: 'postgres'
+      register: postgres__test_query
+
+    - name: 'Verify | assert | assert DB test1 created'
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - postgres__test_query.rowcount == 1
+        fail_msg: '✘ roundcube DB does not exist.'
+
+    - name: '{{ "Verify | test | " ~ postgres___app._profile }}'
+      ansible.builtin.include_role:
+        name: 'r_pufky.data.test'
+        tasks_from: 'copy.yml'
+      vars:
+        test_name: '{{ "Verify | test | " ~ postgres___app._profile }}'
+        test_src: 'files/profile.d/postgres'
+        test_file: '{{ postgres___app._profile }}'
+        test_owner: 'root'
+        test_group: 'root'
+        test_mode: '0644'
+        test_diff: true
+
+    - name: '{{ "Verify | test | " ~ postgres___etc._main_d }}'
+      ansible.builtin.include_role:
+        name: 'r_pufky.data.test'
+        tasks_from: 'copy.yml'
+      vars:
+        test_name:
+          '{{ "Verify | test | " ~ postgres___etc._main_d ~ "/" ~ item.file }}'
+        test_src: '{{ "files/main/" ~ item.file }}'
+        test_file: '{{ postgres___etc._main_d ~ "/" ~ item.file }}'
+        test_owner: 'postgres'
+        test_group: 'postgres'
+        test_mode: '{{ item.mode }}'
+        test_diff: true
+      loop:
+        - {file: 'environment', mode: '0644'}
+        - {file: 'postgresql.conf', mode: '0644'}
+        - {file: 'pg_hba.conf', mode: '0640'}
+        - {file: 'pg_ident.conf', mode: '0640'}
+        - {file: 'pg_ctl.conf', mode: '0644'}
+        - {file: 'start.conf', mode: '0644'}
+      loop_control:
+        label: '{{ item.file }}'

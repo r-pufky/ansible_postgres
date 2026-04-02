@@ -3,8 +3,13 @@
   hosts: 'all'
   gather_facts: false
   tasks:
-    # community.postgresql.postgresql_user - just check user is created.
-    - name: 'Verify database | query user example'
+    - name: 'Verify | import role variables'
+      ansible.builtin.include_vars:
+        file: '{{
+            lookup("env", "MOLECULE_PROJECT_DIRECTORY") ~ "/vars/main.yml"
+          }}'
+
+    - name: 'Verify | SQL | query user example'
       community.postgresql.postgresql_query:
         login_db: 'postgres'
         query: 'select * from pg_catalog.pg_user where usename=%(user)s'
@@ -13,25 +18,19 @@
         login_host: 'localhost'
         login_unix_socket: '/var/run/postgresql'
         login_user: 'postgres'
-        port: '5432'
+        login_port: '5432'
       become: true
       become_user: 'postgres'
-      register: _test_query
+      register: postgres_postgres__test_query
 
-    - name: 'Verify database | assert user example created'
+    - name: 'Verify | assert | assert user example created'
       ansible.builtin.assert:
         quiet: true
         that:
-          - _test_query.rowcount == 1
-        fail_msg: |
-          ╭───────────────────────────────────────────────────────────────────╮
-          │                                                                   │
-          │                   example user does not exist.                    │
-          │                                                                   │
-          ╰───────────────────────────────────────────────────────────────────╯
+          - postgres_postgres__test_query.rowcount == 1
+        fail_msg: '✘ example user does not exist.'
 
-    # community.postgresql.postgresql_user - just check DB is created.
-    - name: 'Verify database | query DB test1'
+    - name: 'Verify | SQL | query DB test1'
       community.postgresql.postgresql_query:
         login_db: 'postgres'
         query: 'select datname from pg_database where datname=%(db)s'
@@ -40,65 +39,62 @@
         login_host: 'localhost'
         login_unix_socket: '/var/run/postgresql'
         login_user: 'postgres'
-        port: '5432'
+        login_port: '5432'
       become: true
       become_user: 'postgres'
-      register: _test_query
+      register: postgres_postgres__test_query
 
-    - name: 'Verify database | assert DB test1 created'
+    - name: 'Verify | assert | assert DB test1 created'
       ansible.builtin.assert:
         quiet: true
         that:
-          - _test_query.rowcount == 1
-        fail_msg: |
-          ╭───────────────────────────────────────────────────────────────────╮
-          │                                                                   │
-          │                   roundcube DB does not exist.                    │
-          │                                                                   │
-          ╰───────────────────────────────────────────────────────────────────╯
+          - postgres_postgres__test_query.rowcount == 1
+        fail_msg: '✘ test1 DB does not exist.'
 
-- name: 'Verify config'
-  hosts: 'all'
-  gather_facts: false
-  tasks:
-    - name: 'Verify config | /etc/profile.d/postgres'
+    - name: '{{ "Verify | test | " ~ postgres___app._profile }}'
       ansible.builtin.include_role:
-        name: 'r_pufky.lib.tests'
+        name: 'r_pufky.data.test'
         tasks_from: 'copy.yml'
       vars:
-        test_name: 'Verify config | /etc/profile.d/postgres'
-        test_src: 'files/postgres'
-        test_file: '/etc/profile.d/postgres'
+        test_name: '{{ "Verify | test | " ~ postgres___app._profile }}'
+        test_src: '{{
+            lookup("env", "MOLECULE_PROJECT_DIRECTORY") ~
+            "/molecule/files/postgres"
+          }}'
+        test_file: '{{ postgres___app._profile }}'
         test_owner: 'root'
         test_group: 'root'
         test_mode: '0644'
         test_diff: true
 
-    - name:
-        'Verify config | /etc/postgresql/17/scripts/postgres_owner'
+    - name: '{{ "Verify | test | " ~ postgres___etc._owner_script }}'
       ansible.builtin.include_role:
-        name: 'r_pufky.lib.tests'
+        name: 'r_pufky.data.test'
         tasks_from: 'copy.yml'
       vars:
-        test_name:
-          'Verify config | /etc/postgresql/17/scripts/postgres_owner'
-        test_src: 'files/postgres_owner'
-        test_file: '/etc/postgresql/17/scripts/postgres_owner'
+        test_name: '{{ "Verify | test | " ~ postgres___etc._owner_script }}'
+        test_src: '{{
+            lookup("env", "MOLECULE_PROJECT_DIRECTORY") ~
+            "/templates/scripts/postgres_owner.j2"
+          }}'
+        test_file: '{{ postgres___etc._owner_script }}'
         test_owner: 'postgres'
         test_group: 'postgres'
-        test_mode: '0700'
+        test_mode: '0770'
         test_diff: true
 
-    - name:
-        'Verify config | /etc/postgresql/17/main'
+    - name: '{{ "Verify | test | " ~ postgres___etc._main_d }}'
       ansible.builtin.include_role:
-        name: 'r_pufky.lib.tests'
+        name: 'r_pufky.data.test'
         tasks_from: 'copy.yml'
       vars:
         test_name:
-          'Verify config | /etc/postgresql/17/main/{{ item.file }}'
-        test_src: 'files/{{ item.file }}'
-        test_file: '/etc/postgresql/17/main/{{ item.file }}'
+          '{{ "Verify | test | " ~ postgres___etc._main_d ~ "/" ~ item.file }}'
+        test_src: '{{
+            lookup("env", "MOLECULE_PROJECT_DIRECTORY") ~
+            "/templates/default/" ~ item.file
+          }}'
+        test_file: '{{ postgres___etc._main_d ~ "/" ~ item.file }}'
         test_owner: 'postgres'
         test_group: 'postgres'
         test_mode: '{{ item.mode }}'
@@ -112,3 +108,76 @@
         - {file: 'start.conf', mode: '0644'}
       loop_control:
         label: '{{ item.file }}'
+
+    - name: 'Verify | SQL | query DB skeleton'
+      community.postgresql.postgresql_query:
+        login_db: 'skeleton'
+        query: 'select tablename from pg_catalog.pg_tables where schemaname=%(schema)s'  # yamllint disable-line rule:line-length
+        named_args:
+          schema: 'public'
+        login_host: 'localhost'
+        login_unix_socket: '/var/run/postgresql'
+        login_user: 'postgres'
+        login_port: '5432'
+      become: true
+      become_user: 'postgres'
+      register: postgres__test_query
+
+    - name: 'Verify | assert | assert DB skeleton created'
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - postgres__test_query.rowcount == 1
+        fail_msg: '✘ skeleton.backup DB does not exist.'
+
+    - name: 'Verify | SQL | query DB skeleton table permissions'
+      community.postgresql.postgresql_query:
+        login_db: 'skeleton'
+        query: 'select tableowner from pg_catalog.pg_tables where tablename=%(table)s and tableowner=%(owner)s'  # yamllint disable-line rule:line-length
+        named_args:
+          table: 'backup'
+          owner: 'example'
+        login_host: 'localhost'
+        login_unix_socket: '/var/run/postgresql'
+        login_user: 'postgres'
+        login_port: '5432'
+      become: true
+      become_user: 'postgres'
+      register: postgres__test_query
+
+    - name: 'Verify | assert | DB skeleton table permissions'
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - postgres__test_query.rowcount == 1
+        fail_msg: |
+
+          ✘ skeleton.backup should be owned by example role.
+
+          {{ postgres__test_query.query_result }}
+
+    - name: 'Verify | SQL | query DB skeleton sequence permissions'
+      community.postgresql.postgresql_query:
+        login_db: 'skeleton'
+        query:
+          'select * from pg_catalog.pg_sequences where sequenceowner=%(owner)s'
+        named_args:
+          owner: 'example'
+        login_host: 'localhost'
+        login_unix_socket: '/var/run/postgresql'
+        login_user: 'postgres'
+        login_port: '5432'
+      become: true
+      become_user: 'postgres'
+      register: postgres__test_query
+
+    - name: 'Verify | assert | DB skeleton sequence permissions'
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - postgres__test_query.rowcount == 1
+        fail_msg: |
+
+          ✘ pg_sequences should be owned by example role.
+
+          {{ postgres__test_query.query_result }}

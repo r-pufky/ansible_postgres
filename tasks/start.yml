@@ -1,0 +1,66 @@
+---
+###############################################################################
+# Start
+###############################################################################
+# Start services and confirm they are active and running.
+#
+# Base service will be enabled but not running. Service is forked and should be
+# running under postgresql@{VERSION}-main.
+
+- name: 'Start | systemd | postgres'
+  ansible.builtin.systemd:
+    name: 'postgresql.service'
+    state: 'started'
+    enabled: true
+    daemon_reload: true
+  delay: 15
+  retries: 3
+  register: postgres__service
+  until: postgres__service.status.ActiveState == 'active'
+
+# Flush backup server after postgres service running to report success.
+- name: 'Start | meta | 🗘 flush timers 🗘'
+  ansible.builtin.meta: flush_handlers
+
+- name: 'Start | fact | query services'
+  ansible.builtin.service_facts:
+
+- name: 'Start | assert | services running'
+  ansible.builtin.assert:
+    quiet: true
+    that: ansible_facts.services[item].state == 'running'
+    fail_msg: |
+
+      ✘ Service failed to start.
+      {{ item }}
+  loop:
+    - '{{ "postgresql@" ~ postgres__cfg._version ~ "-main.service" }}'
+
+- name: 'Start | systemd | query postgres_backup.timer'
+  when: postgres_flg_backup
+  ansible.builtin.command: 'systemctl status postgres_backup.timer'
+  changed_when: false
+  register: postgres__cmd
+
+- name: 'Start | assert | postgres_backup.timer active'
+  when: postgres_flg_backup
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - postgres__cmd.rc == 0
+      - '"Active: active" in postgres__cmd.stdout'
+    fail_msg: |
+
+      ✘ postgres_backup.timer should be active.
+
+- name: 'Start | assert | postgres_backup.service enabled'
+  when: postgres_flg_backup
+  ansible.builtin.assert:
+    quiet: true
+    that: ansible_facts.services[item].status == 'enabled'
+    fail_msg: |
+
+      ✘ Service should be enabled.
+      {{ item }}
+  loop:
+    - 'postgres_backup.service'

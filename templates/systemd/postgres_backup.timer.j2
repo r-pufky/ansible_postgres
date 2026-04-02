@@ -1,0 +1,9 @@
+[Unit]
+Description=postgres_backup.service timer.
+Requires=postgres_backup.service
+
+[Timer]
+OnCalendar={{ postgres__cfg._backup_schedule }}
+
+[Install]
+WantedBy=timers.target
