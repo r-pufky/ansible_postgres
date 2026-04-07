@@ -11,14 +11,14 @@
 # Custom data directories require setting postgres shell environment correctly
 # to locate the install for command line operations.
 
-- name: '{{ "Install | filesystem | set " ~ postgres__cfg._profile }}'
+- name: '{{ "Install | filesystem | set " ~ postgres___app._profile }}'
   ansible.builtin.template:
     src: '{{
         "templates/profile.d/postgres.j2"
         if postgres__srv._profile | length == 0 else
         postgres__srv._profile
       }}'
-    dest: '{{ postgres__cfg._profile }}'
+    dest: '{{ postgres___app._profile }}'
     owner: 'root'
     group: 'root'
     mode: '0644'

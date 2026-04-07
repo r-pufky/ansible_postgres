@@ -53,7 +53,7 @@
 
 - name: 'Prep | fact | parse metadata'
   ansible.builtin.set_fact:
-    postgres__etc: "{{ {} | r_pufky.data.v3(
+    postgres__etc: "{{ postgres___etc | r_pufky.data.v3(
 
         _d=postgres__cfg._etc_d,
 
@@ -71,13 +71,13 @@
         _postgresql=postgres__cfg._etc_d ~ '/main/postgresql.conf',
         _start=postgres__cfg._etc_d ~ '/main/start.conf',
       ) }}"
-    postgres__usr: "{{ {} | r_pufky.data.v3(
+    postgres__usr: "{{ postgres___usr | r_pufky.data.v3(
 
         _d=postgres__cfg._usr_d,
         _bin_d=postgres__cfg._usr_d ~ '/bin',
         _initdb=postgres__cfg._usr_d ~ '/bin/initdb',
       ) }}"
-    postgres__lib: "{{ {} | r_pufky.data.v3(
+    postgres__lib: "{{ postgres___lib | r_pufky.data.v3(
 
         _d=postgres__cfg._lib_d,
         _data_d=postgres__cfg._lib_d ~ '/main',

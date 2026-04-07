@@ -40,22 +40,22 @@ Detailed variable use documented in defaults. See usage for role operation.
 > Multiple Postgres version deployments on the same machine will work but are
 > unsupported.
 
-Path                                        | Usage
---------------------------------------------|-------
-/etc/postgres/{VERSION}/main                | Configuration files deployed here.
-/etc/postgres/{VERSION}/main/conf.d         | postgres_srv_conf_d always deployed here.
-/etc/postgres/{VERSION}/main/secure.conf.d  | postgres_srv_secure_conf_d always deployed here.
-/etc/postgres/{VERSION}/scripts             | Role scripts.
-/var/lib/postgresql/{VERSION}               | Default database location.
+ Path                                       | Usage
+ -------------------------------------------|-------
+ /etc/postgres/{VERSION}/main               | Configuration files deployed here.
+ /etc/postgres/{VERSION}/main/conf.d        | postgres_srv_conf_d always deployed here.
+ /etc/postgres/{VERSION}/main/secure.conf.d | postgres_srv_secure_conf_d always deployed here.
+ /etc/postgres/{VERSION}/scripts            | Role scripts.
+ /var/lib/postgresql/{VERSION}              | Default database location.
 
 ### Feature Flags
 Tasks are gated by feature flags and executed in the following order.
 
-  Step | Flag                    | Notes
- ------|-------------------------|-------
-  1    | forgejo_flg_install     | Install required packages, users, etc.
-  2    | forgejo_flg_config      | Install user-defined config.
-  3    | forgejo_flg_backup      | Create scheduled backups?
+  Step | Flag                | Notes
+ ------|---------------------|-------
+  1    | forgejo_flg_install | Install required packages, users, etc.
+  2    | forgejo_flg_config  | Install user-defined config.
+  3    | forgejo_flg_backup  | Create scheduled backups?
 
 ### Example Playbooks
 

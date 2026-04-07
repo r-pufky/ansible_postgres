@@ -25,69 +25,111 @@
 # * https://www.postgresql.org/docs/current/config-setting.html#CONFIG-SETTING-NAMES-VALUES
 # yamllint enable rule:line-length
 
-- name: '{{ "Config | filesystem | deploy " ~ postgres__etc._conf_d }}'
-  ansible.builtin.template:
-    src: '{{ item.src }}'
-    dest: '{{ postgres__etc._conf_d }}'
-    owner: '{{ postgres__srv._user }}'
-    group: '{{ postgres__srv._group }}'
-    mode: '0644'
-  loop:
-    '{{ query("community.general.filetree", postgres__srv._conf_d) }}'
-  loop_control:
-    label: '{{ item.path }}'
-  when: item.state == 'file'
-  register: postgres__local
+- name: '{{ "Config | filesystem | set " ~ postgres__etc._conf_d }}'
+  block:
+    - name: 'Config | filetree | set managed directories'
+      ansible.builtin.file:
+        path: '{{ postgres__etc._conf_d ~ "/" ~ item.path }}'
+        owner: '{{ postgres__srv._user }}'
+        group: '{{ postgres__srv._group }}'
+        mode: '0755'
+        state: 'directory'
+      loop:
+        '{{ query("community.general.filetree", postgres__srv._conf_d) }}'
+      loop_control:
+        label: '{{ item.path }}'
+      when: item.state == 'directory'
 
-- name: 'Config | filesystem | query remote files'
-  ansible.builtin.find:
-    paths: '{{ postgres__etc._conf_d }}'
-    file_type: 'file'
-    recurse: true
-  register: postgres__remote
+    - name: 'Config | filetree | set managed files'
+      ansible.builtin.template:
+        src: '{{ item.src }}'
+        dest: '{{ postgres__etc._conf_d ~ "/" ~ item.path }}'
+        owner: '{{ postgres__srv._user }}'
+        group: '{{ postgres__srv._group }}'
+        mode: '0644'
+      loop:
+        '{{ query("community.general.filetree", postgres__srv._conf_d) }}'
+      loop_control:
+        label: '{{ item.path }}'
+      when: item.state == 'file'
 
-- name: 'Config | filesystem | remove unmanaged files'
-  ansible.builtin.file:
-    path: '{{ item.path }}'
-    state: 'absent'
-  loop: '{{ postgres__remote.files }}'
-  loop_control:
-    label: '{{ item.path }}'
-  when: >
-    item.path not in postgres__local.results | selectattr('dest', 'defined') |
-    map(attribute='dest') | list
+    - name: 'Config | filesystem | query remote files'
+      ansible.builtin.find:
+        paths: '{{ postgres__etc._conf_d }}'
+        file_type: 'any'
+        hidden: true
+        recurse: true
+      register: postgres__remote
 
-- name: '{{ "Config | filesystem | deploy " ~ postgres__etc._secure_conf_d }}'
-  ansible.builtin.template:
-    src: '{{ item.src }}'
-    dest: '{{ postgres__etc._secure_conf_d }}'
-    owner: '{{ postgres__srv._user }}'
-    group: '{{ postgres__srv._group }}'
-    mode: '0644'
-  loop:
-    '{{ query("community.general.filetree", postgres__srv._secure_conf_d) }}'
-  loop_control:
-    label: '{{ item.path }}'
-  when: item.state == 'file'
-  register: postgres__local
+    - name: 'Config | filetree | remove unmanaged files and directories'
+      ansible.builtin.file:
+        path: '{{ item.path }}'
+        state: 'absent'
+      loop:
+        '{{ postgres__remote.files | sort(attribute="path", reverse=true) }}'
+      loop_control:
+        label: '{{ item.path }}'
+      when: >
+        item.path not in
+        (
+          query("community.general.filetree", postgres__srv._conf_d) |
+          map(attribute='path') |
+          map('regex_replace', '^', postgres__etc._conf_d ~ "/") | list
+        )
 
-- name: 'Config | filesystem | query remote files'
-  ansible.builtin.find:
-    paths: '{{ postgres__etc._secure_conf_d }}'
-    file_type: 'file'
-    recurse: true
-  register: postgres__remote
+- name: '{{ "Config | filesystem | set " ~ postgres__etc._secure_conf_d }}'
+  block:
+    - name: 'Config | filetree | set managed directories'
+      ansible.builtin.file:
+        path: '{{ postgres__etc._secure_conf_d ~ "/" ~ item.path }}'
+        owner: '{{ postgres__srv._user }}'
+        group: '{{ postgres__srv._group }}'
+        mode: '0750'
+        state: 'directory'
+      loop: '{{
+          query("community.general.filetree", postgres__srv._secure_conf_d)
+        }}'
+      loop_control:
+        label: '{{ item.path }}'
+      when: item.state == 'directory'
 
-- name: 'Config | filesystem | remove unmanaged files'
-  ansible.builtin.file:
-    path: '{{ item.path }}'
-    state: 'absent'
-  loop: '{{ postgres__remote.files }}'
-  loop_control:
-    label: '{{ item.path }}'
-  when: >
-    item.path not in postgres__local.results | selectattr('dest', 'defined') |
-    map(attribute='dest') | list
+    - name: 'Config | filetree | set managed files'
+      ansible.builtin.template:
+        src: '{{ item.src }}'
+        dest: '{{ postgres__etc._secure_conf_d ~ "/" ~ item.path }}'
+        owner: '{{ postgres__srv._user }}'
+        group: '{{ postgres__srv._group }}'
+        mode: '0640'
+      loop: '{{
+          query("community.general.filetree", postgres__srv._secure_conf_d)
+        }}'
+      loop_control:
+        label: '{{ item.path }}'
+      when: item.state == 'file'
+
+    - name: 'Config | filesystem | query remote files'
+      ansible.builtin.find:
+        paths: '{{ postgres__etc._secure_conf_d }}'
+        file_type: 'any'
+        hidden: true
+        recurse: true
+      register: postgres__remote
+
+    - name: 'Config | filetree | remove unmanaged files and directories'
+      ansible.builtin.file:
+        path: '{{ item.path }}'
+        state: 'absent'
+      loop:
+        '{{ postgres__remote.files | sort(attribute="path", reverse=true) }}'
+      loop_control:
+        label: '{{ item.path }}'
+      when: >
+        item.path not in
+        (
+          query("community.general.filetree", postgres__srv._secure_conf_d) |
+          map(attribute='path') |
+          map('regex_replace', '^', postgres__etc._secure_conf_d ~ "/") | list
+        )
 
 - name:
     '{{ "Config | filesystem | set " ~ postgres__etc._environment }}'

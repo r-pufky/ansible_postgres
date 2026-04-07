@@ -50,7 +50,7 @@
           user.login_host
           if user.login_host is defined else
           postgres__srv._connection.login_host
-        ) | default(postgres__cfg._login_host)
+        ) | default(postgres___app._login_host)
       }}'
     login_password: '{{ (
 
@@ -71,14 +71,14 @@
           user.login_unix_socket
           if user.login_unix_socket is defined else
           postgres__srv._connection.login_unix_socket
-        ) | default(postgres__cfg._socket_d)
+        ) | default(postgres___app._socket_d)
       }}'
     login_user: '{{ (
 
           user.login_user
           if user.login_user is defined else
           postgres__srv._connection.login_user
-        ) | default(postgres__cfg._login_user)
+        ) | default(postgres___app._login_user)
       }}'
     name: '{{ user.name }}'
     no_password_changes: '{{ user.no_password_changes | default(false) }}'

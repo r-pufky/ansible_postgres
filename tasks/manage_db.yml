@@ -62,7 +62,7 @@
           db.login_host
           if user.login_host is defined else
           postgres__srv._connection.login_host
-        ) | default(postgres__cfg._login_host)
+        ) | default(postgres___app._login_host)
       }}'
     login_password: '{{ (
 
@@ -83,17 +83,17 @@
           db.login_unix_socket
           if user.login_unix_socket is defined else
           postgres__srv._connection.login_unix_socket
-        ) | default(postgres__cfg._socket_d)
+        ) | default(postgres___app._socket_d)
       }}'
     login_user: '{{ (
 
           db.login_user
           if user.login_user is defined else
           postgres__srv._connection.login_user
-        ) | default(postgres__cfg._login_user)
+        ) | default(postgres___app._login_user)
       }}'
     maintenance_db:
-      '{{ db.maintenance_db | default(postgres__cfg._login_user) }}'
+      '{{ db.maintenance_db | default(postgres___app._login_user) }}'
     name: '{{ db.name }}'
     owner: '{{ db.owner | default(postgres__srv._user) }}'
     session_role: '{{ (
@@ -219,7 +219,7 @@
               db.login_host
               if user.login_host is defined else
               postgres__srv._connection.login_host
-            ) | default(postgres__cfg._login_host)
+            ) | default(postgres___app._login_host)
           }}'
         login_password: '{{ (
 
@@ -240,17 +240,17 @@
               db.login_unix_socket
               if user.login_unix_socket is defined else
               postgres__srv._connection.login_unix_socket
-            ) | default(postgres__cfg._socket_d)
+            ) | default(postgres___app._socket_d)
           }}'
         login_user: '{{ (
 
               db.login_user
               if user.login_user is defined else
               postgres__srv._connection.login_user
-            ) | default(postgres__cfg._login_user)
+            ) | default(postgres___app._login_user)
           }}'
         maintenance_db:
-          '{{ db.maintenance_db | default(postgres__cfg._login_user) }}'
+          '{{ db.maintenance_db | default(postgres___app._login_user) }}'
         name: '{{ db.name }}'
         owner: '{{ db.owner | default(postgres__srv._user) }}'
         session_role: '{{ (
