@@ -28,17 +28,18 @@ Detailed variable use documented in defaults. See usage for role operation.
 > service does not log configuration errors on startup. This must be done
 > manually to see what configuration issues are occurring.
 >
-> ``` bash
-> su - postgres
-> /usr/lib/postgresql/17/bin/postgres -d 3 \
-> -D /var/lib/postgresql/17/main \
-> -c config_file=/etc/postgresql/17/main/postgresql.conf
-> ```
 > Database version upgrades are currently not supported and must be done
 > manually (or export the database and import the database via the role).
 >
 > Multiple Postgres version deployments on the same machine will work but are
 > unsupported.
+
+``` bash
+su - postgres
+/usr/lib/postgresql/17/bin/postgres -d 3 \
+-D /var/lib/postgresql/17/main \
+-c config_file=/etc/postgresql/17/main/postgresql.conf
+```
 
  Path                                       | Usage
  -------------------------------------------|-------
@@ -51,11 +52,11 @@ Detailed variable use documented in defaults. See usage for role operation.
 ### Feature Flags
 Tasks are gated by feature flags and executed in the following order.
 
-  Step | Flag                | Notes
- ------|---------------------|-------
-  1    | forgejo_flg_install | Install required packages, users, etc.
-  2    | forgejo_flg_config  | Install user-defined config.
-  3    | forgejo_flg_backup  | Create scheduled backups?
+  Step | Flag                 | Notes
+ ------|----------------------|-------
+  1    | postgres_flg_install | Install required packages, users, etc.
+  2    | postgres_flg_config  | Install user-defined config.
+  3    | postgres_flg_backup  | Create scheduled backups?
 
 ### Example Playbooks
 
