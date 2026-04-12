@@ -157,7 +157,6 @@
     vtype: 'boolean'
     value: '{{ postgres__srv._upgrade }}'
 
-
 # Render configuration locally and resolve configured service paths.
 - name: 'Prep | fact | resolve postgresql.conf'
   ansible.builtin.set_fact:

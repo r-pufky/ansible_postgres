@@ -408,7 +408,7 @@ postgres_cfg_backup_individual: true
 
 # Backup location.
 #
-# Directory will be created with root permissions.
+# Directory created with postgres_srv_user:postgres_srv_group permissions.
 #
 # Default: '/srv/postgres_backup'.
 postgres_cfg_backup_d: '/srv/postgres_backup'
