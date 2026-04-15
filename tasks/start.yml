@@ -6,11 +6,12 @@
 #
 # Base service will be enabled but not running. Service is forked and should be
 # running under postgresql@{VERSION}-main.
+#
 
 - name: 'Start | systemd | postgres'
   ansible.builtin.systemd:
     name: 'postgresql.service'
-    state: 'started'
+    state: 'reloaded'  # Must reload to pick up new configuration changes.
     enabled: true
     daemon_reload: true
   delay: 15

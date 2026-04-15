@@ -29,10 +29,10 @@
     apt_sources: '{{ postgres___apt_sources }}'
     apt_srv_package_update_cache: true
 
-- name: '{{  "Install | filesystem | set minimal " ~ postgres__etc._conf_d }}'
+- name: '{{ "Install | filesystem | set minimal " ~ postgres__etc._conf_d }}'
   when: postgres__srv._conf_d | length == 0
   block:
-    - name: 'Config | filetree | set managed directories'
+    - name: 'Install | filetree | set managed directories'
       ansible.builtin.file:
         path: '{{ postgres__etc._conf_d ~ "/" ~ item.path }}'
         owner: '{{ postgres__srv._user }}'
@@ -45,7 +45,7 @@
         label: '{{ item.path }}'
       when: item.state == 'directory'
 
-    - name: 'Config | filetree | set managed files'
+    - name: 'Install | filetree | set managed files'
       ansible.builtin.template:
         src: '{{ item.src }}'
         dest: '{{ postgres__etc._conf_d ~ "/" ~ item.path }}'
@@ -58,7 +58,7 @@
         label: '{{ item.path }}'
       when: item.state == 'file'
 
-    - name: 'Config | filesystem | query remote files'
+    - name: 'Install | filesystem | query remote files'
       ansible.builtin.find:
         paths: '{{ postgres__etc._conf_d }}'
         file_type: 'any'
@@ -66,7 +66,7 @@
         recurse: true
       register: postgres__remote
 
-    - name: 'Config | filetree | remove unmanaged files and directories'
+    - name: 'Install | filetree | remove unmanaged files and directories'
       ansible.builtin.file:
         path: '{{ item.path }}'
         state: 'absent'

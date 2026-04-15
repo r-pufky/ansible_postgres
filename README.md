@@ -41,13 +41,13 @@ su - postgres
 -c config_file=/etc/postgresql/17/main/postgresql.conf
 ```
 
- Path                                       | Usage
- -------------------------------------------|-------
- /etc/postgres/{VERSION}/main               | Configuration files deployed here.
- /etc/postgres/{VERSION}/main/conf.d        | postgres_srv_conf_d always deployed here.
- /etc/postgres/{VERSION}/main/secure.conf.d | postgres_srv_secure_conf_d always deployed here.
- /etc/postgres/{VERSION}/scripts            | Role scripts.
- /var/lib/postgresql/{VERSION}              | Default database location.
+  Path                                       | Usage
+ --------------------------------------------|-------
+  /etc/postgres/{VERSION}/main               | Configuration files deployed here.
+  /etc/postgres/{VERSION}/main/conf.d        | postgres_srv_conf_d always deployed here.
+  /etc/postgres/{VERSION}/main/secure.conf.d | postgres_srv_secure_conf_d always deployed here.
+  /etc/postgres/{VERSION}/scripts            | Role scripts.
+  /var/lib/postgresql/{VERSION}              | Default database location.
 
 ### Feature Flags
 Tasks are gated by feature flags and executed in the following order.
@@ -280,7 +280,6 @@ Associate pull requests with a submitted bug.
 ## Author Information
 PGP: [466EEC2B67516C7117C85CE3A0BC35D16698BAB9][d] | [github gist][e]
 
-
 [a]: https://r-pufky.github.io/ansible_docs
 [b]: https://semver.org/spec/v2.0.0
 [c]: https://www.tldrlegal.com/license/gnu-affero-general-public-license-v3-agpl-3-0
@@ -293,6 +292,6 @@ PGP: [466EEC2B67516C7117C85CE3A0BC35D16698BAB9][d] | [github gist][e]
 [i]: https://github.com/r-pufky/ansible_postgres/blob/main/meta/main.yml
 [j]: https://github.com/r-pufky/ansible_postgres/tree/main/defaults/main/main.yml
 [k]: https://github.com/r-pufky/ansible_postgres/blob/main/defaults/main/ports.yml
-[m]: http://r-pufky.github.io/docs/service/postgres
+[m]: https://r-pufky.github.io/docs/db/postgres
 [n]: https://github.com/r-pufky/ansible_postgres/tree/main/templates/default
 [o]: https://r-pufky.github.io/ansible_docs/best_practice/patterns/#network-mounts

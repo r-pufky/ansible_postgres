@@ -53,13 +53,20 @@ postgres_srv_version: '17'
 
 # Postgres conf.d to set.
 #
-# Ansible controller path to source conf.d files (treated as a jinja2 templates
-# allowing for ansible variable interpretation). Overwrites existing config
-# data in /etc/postgresql/{VERSION}/main/conf.d/*. Files not sourced will be
-# removed.
+# Ansible controller path to source directory (treated as a jinja2 templates
+# allowing for ansible variable use).
 #
-# Required default postgres configuration is auto-generated if not set (see
-# templates/default).
+# Sets data in /etc/postgresql/{VERSION}/main/conf.d/*. Files not sourced will
+# be removed. See templates/default for examples.
+#
+# postgres_flg_config=true:
+# ⋮postgres_srv_conf_d='' - Remove existing files.
+# ⋮postgres_srv_conf_d='{DIR}' - Replace existing files with sourced template
+# ⋮    dir.
+# postgres_flg_config=false:
+# ⋮postgres_srv_conf_d='' - Use default postgres configuration template dir in
+# ⋮    templates/default.
+# ⋮postgres_srv_conf_d='{DIR}' - Take no action.
 #
 # postgres_srv_conf_d: 'host_vars/db.example.com/conf.d'
 #
@@ -68,14 +75,22 @@ postgres_srv_conf_d: ''
 
 # Postgres secure conf.d to set.
 #
-# Ansible controller path to source secure conf.d files (treated as a jinja2
-# templates allowing for ansible variable interpretation). Overwrites existing
-# config data in /etc/postgresql/{VERSION}/main/secure.conf.d/* with 0750:0640
-# postgres_srv_user, postgres_srv_group permissions. Certificates, etc. should
-# be included here and sourced from standard conf.d and configuration files.
-# Files not sourced will be removed.
+# Ansible controller path to source directory (treated as a jinja2 templates
+# allowing for ansible variable use).
 #
-# postgres_srv_secure_conf_d: 'host_vars/db.example.com/secure.conf.d'
+# Sets data in /etc/postgresql/{VERSION}/main/secure.conf.d/* with 0750:0640
+# postgres_srv_user:postgres_srv_group permissions. Secure material such as
+# certs should be included here and sourced from config files. Files not
+# sourced will be removed. See templates/default for examples.
+#
+# postgres_flg_config=true:
+# ⋮postgres_srv_secure_conf_d='' - Remove existing files.
+# ⋮postgres_srv_secure_conf_d='{DIR}' - Replace existing files with sourced
+# ⋮    template dir.
+# postgres_flg_config=false:
+# ⋮postgres_srv_secure_conf_d=* - Take no action.
+#
+# postgres_srv_conf_d: 'host_vars/db.example.com/secure.conf.d'
 #
 # Default: '' (use minimally configured default).
 postgres_srv_secure_conf_d: ''

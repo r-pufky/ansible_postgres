@@ -15,7 +15,7 @@
         _start_time=now(utc=True, fmt='%Y-%m-%dT%H%M%S'),
 
         _conf_d=postgres_srv_conf_d | regex_replace('\\/$', ''),
-        _secure_conf_d=postgres_srv_secure_conf_d,
+        _secure_conf_d=postgres_srv_secure_conf_d | regex_replace('\\/$', ''),
         _environment=postgres_srv_environment,
         _pg_ctl=postgres_srv_pg_ctl,
         _pg_hba=postgres_srv_pg_hba,

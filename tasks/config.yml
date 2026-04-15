@@ -26,6 +26,7 @@
 # yamllint enable rule:line-length
 
 - name: '{{ "Config | filesystem | set " ~ postgres__etc._conf_d }}'
+  when: postgres__srv._conf_d | length > 0
   block:
     - name: 'Config | filetree | set managed directories'
       ansible.builtin.file:
@@ -77,7 +78,23 @@
           map('regex_replace', '^', postgres__etc._conf_d ~ "/") | list
         )
 
+- name: '{{ "Config | filesystem | query " ~ postgres__etc._conf_d }}'
+  when: postgres__srv._conf_d | length == 0
+  ansible.builtin.find:
+    paths: "{{ postgres__etc._conf_d }}"
+    recurse: false  # Don't need to enumerate sub-directories to remove.
+    hidden: true
+  register: postgres__cmd
+
+- name: '{{ "Config | filesystem | clear " ~ postgres__etc._conf_d }}'
+  when: postgres__srv._conf_d | length == 0
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ postgres__cmd.files }}"
+
 - name: '{{ "Config | filesystem | set " ~ postgres__etc._secure_conf_d }}'
+  when: postgres__srv._secure_conf_d | length > 0
   block:
     - name: 'Config | filetree | set managed directories'
       ansible.builtin.file:
@@ -131,9 +148,23 @@
           map('regex_replace', '^', postgres__etc._secure_conf_d ~ "/") | list
         )
 
-- name:
-    '{{ "Config | filesystem | set " ~ postgres__etc._environment }}'
-  when: postgres__etc._environment | length > 0
+- name: '{{ "Config | filesystem | query " ~ postgres__etc._secure_conf_d }}'
+  when: postgres__srv._secure_conf_d | length == 0
+  ansible.builtin.find:
+    paths: "{{ postgres__etc._secure_conf_d }}"
+    recurse: false  # Don't need to enumerate sub-directories to remove.
+    hidden: true
+  register: postgres__cmd
+
+- name: '{{ "Config | filesystem | clear " ~ postgres__etc._secure_conf_d }}'
+  when: postgres__srv._secure_conf_d | length == 0
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ postgres__cmd.files }}"
+
+- name: '{{ "Config | filesystem | set " ~ postgres__etc._environment }}'
+  when: postgres__srv._environment | length > 0
   ansible.builtin.template:
     src: '{{ postgres__srv._environment }}'
     dest: '{{ postgres__etc._environment }}'
@@ -143,7 +174,7 @@
 
 - name:
     '{{ "Config | filesystem | set " ~ postgres__etc._pg_ctl }}'
-  when: postgres__etc._pg_ctl | length > 0
+  when: postgres__srv._pg_ctl | length > 0
   ansible.builtin.template:
     src: '{{ postgres__srv._pg_ctl }}'
     dest: '{{ postgres__etc._pg_ctl }}'
@@ -153,7 +184,7 @@
 
 - name:
     '{{ "Config | filesystem | set " ~ postgres__etc._pg_hba }}'
-  when: postgres__etc._pg_hba | length > 0
+  when: postgres__srv._pg_hba | length > 0
   ansible.builtin.template:
     src: '{{ postgres__srv._pg_hba }}'
     dest: '{{ postgres__etc._pg_hba }}'
@@ -163,7 +194,7 @@
 
 - name:
     '{{ "Config | filesystem | set " ~ postgres__etc._pg_ident }}'
-  when: postgres__etc._pg_ident | length > 0
+  when: postgres__srv._pg_ident | length > 0
   ansible.builtin.template:
     src: '{{ postgres__srv._pg_ident }}'
     dest: '{{ postgres__etc._pg_ident }}'
@@ -173,7 +204,7 @@
 
 - name:
     '{{ "Config | filesystem | set " ~ postgres__etc._postgresql }}'
-  when: postgres__etc._postgresql | length > 0
+  when: postgres__srv._postgresql | length > 0
   ansible.builtin.template:
     src: '{{ postgres__srv._postgresql }}'
     dest: '{{ postgres__etc._postgresql }}'
@@ -183,7 +214,7 @@
 
 - name:
     '{{ "Config | filesystem | set " ~ postgres__etc._start }}'
-  when: postgres__etc._start | length > 0
+  when: postgres__srv._start | length > 0
   ansible.builtin.template:
     src: '{{ postgres__srv._start }}'
     dest: '{{ postgres__etc._start }}'
