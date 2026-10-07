@@ -47,6 +47,7 @@
         _backup_d=postgres_cfg_backup_d | regex_replace('\\/$', ''),
         _backup_owner=postgres_cfg_backup_owner,
         _backup_group=postgres_cfg_backup_group,
+        _backup_relax=postgres_cfg_backup_relax,
         _backup_schedule=postgres_cfg_backup_schedule,
         _backup_opts=postgres_cfg_backup_opts | join(' '),
       ) }}"

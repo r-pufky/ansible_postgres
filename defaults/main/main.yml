@@ -434,6 +434,14 @@ postgres_cfg_backup_owner: 'root'
 # Backup file group. Default: 'root'.
 postgres_cfg_backup_group: 'root'
 
+# Relax backup directory permissions?
+#
+# Use 0755 instead of 0750 for backup directory; which may prevented backup
+# issues with squashed NFS mounts. Backup files are always o-rwx.
+#
+# Default: False.
+postgres_cfg_backup_relax: false
+
 # Set backup schedule.
 #
 # Uses systemd TIME specification.
